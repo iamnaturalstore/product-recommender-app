@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+// eslint-disable-next-line no-unused-vars
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, addDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { CheckCircle, XCircle, Search, Sparkles, Settings, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Filter } from 'lucide-react';
 
@@ -261,6 +262,7 @@ const App = () => {
     }, []); // Run only once on component mount
 
     // Fetch data from Firestore once authenticated
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (!isAuthReady || !db) {
             return;
