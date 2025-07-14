@@ -262,13 +262,14 @@ const App = () => {
     }, []); // Run only once on component mount
 
     // Fetch data from Firestore once authenticated
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (!isAuthReady || !db) {
             return;
         }
 
         // Add sample data if collections are empty (for first run)
+        // addSampleData is a function, and publicDataPath is a constant.
+        // ESLint's exhaustive-deps rule requires them in the dependency array.
         addSampleData();
 
         // Listen for concerns
@@ -312,7 +313,7 @@ const App = () => {
             unsubscribeProducts();
             unsubscribeMappings();
         };
-    }, [isAuthReady, db]); // Re-run when auth state changes or db becomes available
+    }, [isAuthReady, db, addSampleData, publicDataPath]); // Explicitly added addSampleData and publicDataPath
 
     // Logic to update recommendations based on selected concerns and dynamic mappings
     useEffect(() => {
@@ -663,7 +664,8 @@ const App = () => {
         showConfirmation("Are you sure you want to delete this mapping?", async () => {
             try {
                 await deleteDoc(doc(db, `${publicDataPath}/concernIngredientMappings`, id));
-            } catch (e) {
+            }
+            catch (e) {
                 console.error("Error deleting mapping: ", e);
                 showConfirmation("Failed to delete mapping. Please try again.", null, false);
             }
@@ -1397,184 +1399,184 @@ const App = () => {
                                                             title="Delete Product"
                                                         >
                                                             <Trash2 className="w-5 h-5" />
-                                                        </button>
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p className="p-4 text-gray-600">No products found matching your search.</p>
+                                                            </button>
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p className="p-4 text-gray-600">No products found matching your search.</p>
+                                        )}
+                                    </div>
+                                    {selectedProductIds.length > 0 && (
+                                        <button
+                                            onClick={handleDeleteSelectedProducts}
+                                            className="mt-4 px-5 py-3 bg-red-500 text-white font-semibold rounded-md shadow-md hover:bg-red-600 transition-colors duration-200 flex items-center"
+                                        >
+                                            <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedProductIds.length})
+                                        </button>
                                     )}
                                 </div>
-                                {selectedProductIds.length > 0 && (
-                                    <button
-                                        onClick={handleDeleteSelectedProducts}
-                                        className="mt-4 px-5 py-3 bg-red-500 text-white font-semibold rounded-md shadow-md hover:bg-red-600 transition-colors duration-200 flex items-center"
-                                    >
-                                        <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedProductIds.length})
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                            )}
 
-                        {adminSubTab === 'mappings' && (
-                            <div className="bg-pink-50 p-6 rounded-lg shadow-inner">
-                                <h2 className="text-2xl font-semibold text-pink-600 mb-4 flex items-center gap-2">
-                                    <Link className="w-6 h-6" /> Manage Concern-Ingredient Mappings
-                                </h2>
-                                <div className="flex flex-col gap-3 mb-6">
-                                    <label htmlFor="concern-select" className="font-semibold text-pink-700">Select Concern:</label>
-                                    <select
-                                        id="concern-select"
-                                        value={selectedConcernForMapping}
-                                        onChange={(e) => {
-                                            setSelectedConcernForMapping(e.target.value);
-                                            const existing = concernIngredientMappings.find(m => m.concernName === e.target.value);
-                                            setSelectedIngredientsForMapping(existing ? (existing.ingredientNames || []) : []);
-                                        }}
-                                        className="p-3 border border-pink-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-400"
-                                    >
-                                        <option value="">-- Select a Concern --</option>
-                                        {concerns.map(concern => (
-                                            <option key={concern.id} value={concern.name}>{concern.name}</option>
-                                        ))}
-                                    </select>
+                            {adminSubTab === 'mappings' && (
+                                <div className="bg-pink-50 p-6 rounded-lg shadow-inner">
+                                    <h2 className="text-2xl font-semibold text-pink-600 mb-4 flex items-center gap-2">
+                                        <Link className="w-6 h-6" /> Manage Concern-Ingredient Mappings
+                                    </h2>
+                                    <div className="flex flex-col gap-3 mb-6">
+                                        <label htmlFor="concern-select" className="font-semibold text-pink-700">Select Concern:</label>
+                                        <select
+                                            id="concern-select"
+                                            value={selectedConcernForMapping}
+                                            onChange={(e) => {
+                                                setSelectedConcernForMapping(e.target.value);
+                                                const existing = concernIngredientMappings.find(m => m.concernName === e.target.value);
+                                                setSelectedIngredientsForMapping(existing ? (existing.ingredientNames || []) : []);
+                                            }}
+                                            className="p-3 border border-pink-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-400"
+                                        >
+                                            <option value="">-- Select a Concern --</option>
+                                            {concerns.map(concern => (
+                                                <option key={concern.id} value={concern.name}>{concern.name}</option>
+                                            ))}
+                                        </select>
 
-                                    <button
-                                        onClick={handleGenerateMappingWithAI}
-                                        disabled={!selectedConcernForMapping || generatingMapping}
-                                        className={`px-5 py-3 rounded-md shadow-md transition-colors duration-200 flex items-center justify-center
-                                            ${!selectedConcernForMapping || generatingMapping
-                                                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                                                : 'bg-purple-500 text-white hover:bg-purple-600'
-                                            }`}
-                                    >
-                                        {generatingMapping ? (
-                                            <span className="flex items-center">
-                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                Generating...
-                                            </span>
-                                        ) : (
-                                            <>
-                                                <Brain className="w-5 h-5 mr-2" /> Generate Ingredients with AI
-                                            </>
-                                        )}
-                                    </button>
-
-                                    <h4 className="font-semibold text-pink-700 mt-2">Selected Ingredients for this Concern:</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {ingredients.map(ing => (
-                                            <button
-                                                key={ing.id}
-                                                onClick={() => handleMappingIngredientToggle(ing.name)}
-                                                className={`px-3 py-1 rounded-full border transition-all duration-200
-                                                    ${selectedIngredientsForMapping.includes(ing.name)
-                                                        ? 'bg-pink-600 text-white border-pink-700'
-                                                        : 'bg-white text-pink-700 border-pink-300 hover:bg-pink-100'
-                                                    }`}
-                                            >
-                                                {ing.name}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <div className="flex gap-2 mt-4">
                                         <button
-                                            onClick={handleAddUpdateMapping}
-                                            disabled={!selectedConcernForMapping || selectedIngredientsForMapping.length === 0}
-                                            className={`px-5 py-3 rounded-md shadow-md transition-colors duration-200 flex items-center
-                                                ${!selectedConcernForMapping || selectedIngredientsForMapping.length === 0
+                                            onClick={handleGenerateMappingWithAI}
+                                            disabled={!selectedConcernForMapping || generatingMapping}
+                                            className={`px-5 py-3 rounded-md shadow-md transition-colors duration-200 flex items-center justify-center
+                                                ${!selectedConcernForMapping || generatingMapping
                                                     ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                                                    : 'bg-pink-500 text-white hover:bg-pink-600'
+                                                    : 'bg-purple-500 text-white hover:bg-purple-600'
                                                 }`}
                                         >
-                                            {editingMapping ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
-                                            {editingMapping ? 'Update Mapping' : 'Add Mapping'}
+                                            {generatingMapping ? (
+                                                <span className="flex items-center">
+                                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    Generating...
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    <Brain className="w-5 h-5 mr-2" /> Generate Ingredients with AI
+                                                </>
+                                            )}
                                         </button>
-                                        {editingMapping && (
+
+                                        <h4 className="font-semibold text-pink-700 mt-2">Selected Ingredients for this Concern:</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {ingredients.map(ing => (
+                                                <button
+                                                    key={ing.id}
+                                                    onClick={() => handleMappingIngredientToggle(ing.name)}
+                                                    className={`px-3 py-1 rounded-full border transition-all duration-200
+                                                        ${selectedIngredientsForMapping.includes(ing.name)
+                                                            ? 'bg-pink-600 text-white border-pink-700'
+                                                            : 'bg-white text-pink-700 border-pink-300 hover:bg-pink-100'
+                                                        }`}
+                                                >
+                                                    {ing.name}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        <div className="flex gap-2 mt-4">
                                             <button
-                                                onClick={resetMappingForm}
-                                                className="px-5 py-3 bg-gray-400 text-white font-semibold rounded-md shadow-md hover:bg-gray-500 transition-colors duration-200 flex items-center"
+                                                onClick={handleAddUpdateMapping}
+                                                disabled={!selectedConcernForMapping || selectedIngredientsForMapping.length === 0}
+                                                className={`px-5 py-3 rounded-md shadow-md transition-colors duration-200 flex items-center
+                                                    ${!selectedConcernForMapping || selectedIngredientsForMapping.length === 0
+                                                        ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                                        : 'bg-pink-500 text-white hover:bg-pink-600'
+                                                    }`}
                                             >
-                                                <X className="w-5 h-5 mr-2" /> Cancel
+                                                {editingMapping ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
+                                                {editingMapping ? 'Update Mapping' : 'Add Mapping'}
                                             </button>
+                                            {editingMapping && (
+                                                <button
+                                                    onClick={resetMappingForm}
+                                                    className="px-5 py-3 bg-gray-400 text-white font-semibold rounded-md shadow-md hover:bg-gray-500 transition-colors duration-200 flex items-center"
+                                                >
+                                                    <X className="w-5 h-5 mr-2" /> Cancel
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <h3 className="text-xl font-semibold text-pink-600 mb-3">Existing Mappings</h3>
+                                    <div className="relative mb-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Search mappings..."
+                                            value={mappingFilter}
+                                            onChange={(e) => setMappingFilter(e.target.value)}
+                                            className="w-full p-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-400"
+                                        />
+                                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    </div>
+                                    <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-pink-200">
+                                        {filteredMappings.length > 0 ? (
+                                            <ul className="divide-y divide-gray-200">
+                                                {filteredMappings.map(mapping => (
+                                                    <li key={mapping.id} className="p-4 hover:bg-gray-50 transition-colors">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <div className="flex items-center">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedMappingIds.includes(mapping.id)}
+                                                                    onChange={() => handleToggleSelectMapping(mapping.id)}
+                                                                    className="mr-3 h-5 w-5 text-pink-600 rounded focus:ring-pink-500"
+                                                                />
+                                                                <span className="text-lg font-medium text-pink-800">{mapping.concernName}</span>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={() => handleEditMapping(mapping)}
+                                                                    className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                                                                    title="Edit Mapping"
+                                                                >
+                                                                    <Edit className="w-5 h-5" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteMapping(mapping.id)}
+                                                                    className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                                                                    title="Delete Mapping"
+                                                                >
+                                                                    <Trash2 className="w-5 h-5" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-sm text-gray-600">
+                                                            Ingredients: {mapping.ingredientNames && mapping.ingredientNames.length > 0
+                                                                ? mapping.ingredientNames.join(', ')
+                                                                : 'None'}
+                                                        </p>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p className="p-4 text-gray-600">No mappings found matching your search.</p>
                                         )}
                                     </div>
-                                </div>
-
-                                <h3 className="text-xl font-semibold text-pink-600 mb-3">Existing Mappings</h3>
-                                <div className="relative mb-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Search mappings..."
-                                        value={mappingFilter}
-                                        onChange={(e) => setMappingFilter(e.target.value)}
-                                        className="w-full p-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-400"
-                                    />
-                                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                </div>
-                                <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-pink-200">
-                                    {filteredMappings.length > 0 ? (
-                                        <ul className="divide-y divide-gray-200">
-                                            {filteredMappings.map(mapping => (
-                                                <li key={mapping.id} className="p-4 hover:bg-gray-50 transition-colors">
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <div className="flex items-center">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedMappingIds.includes(mapping.id)}
-                                                                onChange={() => handleToggleSelectMapping(mapping.id)}
-                                                                className="mr-3 h-5 w-5 text-pink-600 rounded focus:ring-pink-500"
-                                                            />
-                                                            <span className="text-lg font-medium text-pink-800">{mapping.concernName}</span>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                onClick={() => handleEditMapping(mapping)}
-                                                                className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
-                                                                title="Edit Mapping"
-                                                            >
-                                                                <Edit className="w-5 h-5" />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteMapping(mapping.id)}
-                                                                className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                                                                title="Delete Mapping"
-                                                            >
-                                                                <Trash2 className="w-5 h-5" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <p className="text-sm text-gray-600">
-                                                        Ingredients: {mapping.ingredientNames && mapping.ingredientNames.length > 0
-                                                            ? mapping.ingredientNames.join(', ')
-                                                            : 'None'}
-                                                    </p>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p className="p-4 text-gray-600">No mappings found matching your search.</p>
+                                    {selectedMappingIds.length > 0 && (
+                                        <button
+                                            onClick={handleDeleteSelectedMappings}
+                                            className="mt-4 px-5 py-3 bg-red-500 text-white font-semibold rounded-md shadow-md hover:bg-red-600 transition-colors duration-200 flex items-center"
+                                        >
+                                            <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedMappingIds.length})
+                                        </button>
                                     )}
                                 </div>
-                                {selectedMappingIds.length > 0 && (
-                                    <button
-                                        onClick={handleDeleteSelectedMappings}
-                                        className="mt-4 px-5 py-3 bg-red-500 text-white font-semibold rounded-md shadow-md hover:bg-red-600 transition-colors duration-200 flex items-center"
-                                    >
-                                        <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedMappingIds.length})
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
-    );
-};
+        );
+    };
 
-export default App;
+    export default App;
