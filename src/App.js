@@ -110,7 +110,8 @@ const App = () => {
     const publicDataPath = `artifacts/${appId}/public/data`;
 
     // Function to add sample data (for demonstration purposes)
-    const addSampleData = async () => {
+    // Wrapped in useCallback to ensure it's stable and doesn't cause unnecessary re-renders
+    const addSampleData = useCallback(async () => {
         if (!db) {
             console.error("Firestore not initialized. Cannot add sample data.");
             return;
@@ -228,7 +229,8 @@ const App = () => {
             }
         }
         console.log("Sample data check/addition complete.");
-    };
+    }, [publicDataPath]); // Dependencies for useCallback: publicDataPath is a constant, db is outside component
+
 
     // Firebase Initialization and Authentication
     useEffect(() => {
@@ -263,13 +265,11 @@ const App = () => {
 
     // Fetch data from Firestore once authenticated
     useEffect(() => {
-        if (!isAuthReady) { // Removed 'db' from here
+        if (!isAuthReady) {
             return;
         }
 
-        // Add sample data if collections are empty (for first run)
-        // addSampleData is a function, and publicDataPath is a constant.
-        // ESLint's exhaustive-deps rule requires them in the dependency array.
+        // addSampleData is now wrapped in useCallback, making it a stable dependency.
         addSampleData();
 
         // Listen for concerns
@@ -313,7 +313,7 @@ const App = () => {
             unsubscribeProducts();
             unsubscribeMappings();
         };
-    }, [isAuthReady, addSampleData, publicDataPath]); // Removed 'db' from here
+    }, [isAuthReady, addSampleData, publicDataPath]); // 'db' is removed as it's a static object from outside the component
 
     // Logic to update recommendations based on selected concerns and dynamic mappings
     useEffect(() => {
