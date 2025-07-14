@@ -263,7 +263,7 @@ const App = () => {
 
     // Fetch data from Firestore once authenticated
     useEffect(() => {
-        if (!isAuthReady || !db) {
+        if (!isAuthReady) { // Removed 'db' from here
             return;
         }
 
@@ -313,7 +313,7 @@ const App = () => {
             unsubscribeProducts();
             unsubscribeMappings();
         };
-    }, [isAuthReady, db, addSampleData, publicDataPath]); // Explicitly added addSampleData and publicDataPath
+    }, [isAuthReady, addSampleData, publicDataPath]); // Removed 'db' from here
 
     // Logic to update recommendations based on selected concerns and dynamic mappings
     useEffect(() => {
