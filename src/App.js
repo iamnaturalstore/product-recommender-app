@@ -100,13 +100,13 @@ const App = () => {
 
     const [editingConcern, setEditingConcern] = useState(null);
     const [editingIngredient, setEditingIngredient] = useState(null);
-    const [editingProduct, setEditingProduct] = useState(null);
+    const [editingProduct, setEditingProduct] = null;
 
     // State for confirmation modal
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [confirmMessage, setConfirmMessage] = useState('');
-    const [confirmShowCancel, setConfirmShowCancel] = true;
+    const [confirmShowCancel, setConfirmShowCancel] = useState(true); // Changed to useState for proper dependency
 
     // States for search filters
     const [concernFilter, setConcernFilter] = useState('');
@@ -376,7 +376,7 @@ const App = () => {
         setConfirmAction(() => action); // Use a function to set the action
         setConfirmShowCancel(showCancel);
         setShowConfirmModal(true);
-    }, []);
+    }, [setConfirmMessage, setConfirmAction, setConfirmShowCancel, setShowConfirmModal]); // Added all setters to dependency array
 
     const handleConfirm = useCallback(() => {
         if (confirmAction) {
@@ -385,15 +385,15 @@ const App = () => {
         setShowConfirmModal(false);
         setConfirmAction(null);
         setConfirmMessage('');
-        setConfirmShowCancel(true);
-    }, [confirmAction]);
+        setConfirmShowCancel(true); // Added to dependency array
+    }, [confirmAction, setShowConfirmModal, setConfirmAction, setConfirmMessage, setConfirmShowCancel]); // Added all setters to dependency array
 
     const handleCancelConfirm = useCallback(() => {
         setShowConfirmModal(false);
         setConfirmAction(null);
         setConfirmMessage('');
-        setConfirmShowCancel(true);
-    }, []);
+        setConfirmShowCancel(true); // Added to dependency array
+    }, [setShowConfirmModal, setConfirmAction, setConfirmMessage, setConfirmShowCancel]); // Added all setters to dependency array
 
 
     // --- Admin Functions ---
