@@ -13,6 +13,10 @@ import { CheckCircle, XCircle, Search, Sparkles, Settings, PlusCircle, Edit, Tra
 const appId = typeof process.env.REACT_APP_APP_ID !== 'undefined' ? process.env.REACT_APP_APP_ID : 'default-app-id';
 let firebaseConfig = {};
 try {
+    // --- ADDED FOR DEBUGGING NETLIFY ENV VAR ISSUE ---
+    console.log("Raw REACT_APP_FIREBASE_CONFIG from process.env:", process.env.REACT_APP_FIREBASE_CONFIG);
+    // --- END DEBUGGING ADDITION ---
+
     firebaseConfig = typeof process.env.REACT_APP_FIREBASE_CONFIG !== 'undefined' ? JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG) : {};
 } catch (e) {
     console.error("Error parsing REACT_APP_FIREBASE_CONFIG:", e);
