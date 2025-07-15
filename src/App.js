@@ -401,6 +401,7 @@ const App = () => {
         setConfirmAction(() => action); // Use a function to set the action
         setConfirmShowCancel(showCancel);
         setShowConfirmModal(true);
+        console.log("Confirmation modal triggered with message:", message); // NEW LOG
     }, [setConfirmMessage, setConfirmAction, setConfirmShowCancel, setShowConfirmModal]); // Added all setters to dependency array
 
     const handleConfirm = useCallback(() => {
@@ -814,6 +815,7 @@ const App = () => {
 
                             if (newIngredientsToPropose.length > 0) {
                                 const message = `The AI suggested new ingredients not in your list: ${newIngredientsToPropose.join(', ')}. Do you want to add them?`;
+                                console.log("Attempting to show confirmation modal for new ingredients."); // NEW LOG
                                 showConfirmation(message, async () => {
                                     let newlyAddedIds = [];
                                     for (const newIngName of newIngredientsToPropose) {
@@ -831,11 +833,13 @@ const App = () => {
                                     // After adding, update the selected ingredients for mapping
                                     const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredients])];
                                     setSelectedIngredientsForMapping(allSelected);
+                                    console.log("Updated selectedIngredientsForMapping after adding new:", allSelected); // NEW LOG
                                 });
                             } else {
                                 // All generated ingredients already exist or none were new
                                 const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredients])];
                                 setSelectedIngredientsForMapping(allSelected);
+                                console.log("Updated selectedIngredientsForMapping (all existing):", allSelected); // NEW LOG
                                 showConfirmation("AI generated ingredients and they are all in your existing list.", null, false);
                             }
 
