@@ -368,7 +368,7 @@ const App = () => {
 
     // Logic to update recommendations based on selected concerns and dynamic mappings
     useEffect(() => {
-        if (selectedConcerns.length === 0 && !customConcernInput) { // Adjusted condition
+        if (selectedConcerns.length === 0 && !currentCustomerConcern) { // Adjusted condition
             setRecommendedIngredients([]);
             setRecommendedProducts([]);
             setCurrentCustomerConcern(''); // Clear current customer concern
@@ -402,7 +402,8 @@ const App = () => {
         );
         setRecommendedProducts(filteredProducts);
 
-    }, [selectedConcerns, ingredients, products, concernIngredientMappings, customConcernInput, currentCustomerConcern]); // Added customConcernInput and currentCustomerConcern to dependencies
+    }, [selectedConcerns, ingredients, products, concernIngredientMappings, customConcernInput, currentCustomerConcern, recommendedIngredients]); // Added recommendedIngredients to dependency array
+
 
     const handleConcernToggle = (concernName) => {
         setSelectedConcerns(prevSelected =>
@@ -858,7 +859,7 @@ const App = () => {
                                         setSelectedIngredientsForMapping(allSelected);
                                     } else {
                                         // For customer: set recommended ingredients for display
-                                        const newlyAddedNames = newlyAddedObjects.map(obj => obj.name);
+                                        // Filter existing ingredients by name and combine with newly added objects
                                         const existingGenerated = ingredients.filter(ing => generatedIngredientNames.includes(ing.name));
                                         const combinedRecommended = [...existingGenerated, ...newlyAddedObjects];
                                         setRecommendedIngredients(combinedRecommended);
