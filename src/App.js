@@ -49,9 +49,12 @@ if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId) {
 
 // Custom Confirmation Modal Component
 const ConfirmationModal = ({ message, onConfirm, onCancel, showCancel = true }) => {
+    // Added a console log to confirm if the component itself is rendering
+    console.log("ConfirmationModal is rendering!");
     return (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+        // Increased opacity, changed color, higher z-index, and added a distinct border to the modal content
+        <div className="fixed inset-0 bg-red-800 bg-opacity-75 flex items-center justify-center z-[9999]">
+            <div className="bg-blue-200 p-6 rounded-lg shadow-xl max-w-sm w-full text-center border-4 border-green-500">
                 <p className="text-lg font-semibold mb-6">{message}</p>
                 <div className="flex justify-center gap-4">
                     <button
