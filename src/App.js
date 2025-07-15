@@ -31,13 +31,19 @@ try {
 
 // Initialize Firebase outside the component to prevent re-initialization
 let app, db, auth;
-try {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    auth = getAuth(app);
-} catch (error) {
-    console.error("Firebase initialization error:", error);
-    // Handle error, e.g., display a message to the user
+// Added a check to ensure firebaseConfig is a non-empty object with projectId before initializing
+if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId) {
+    try {
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+    } catch (error) {
+        console.error("Firebase initialization error:", error);
+        // Handle error, e.g., display a message to the user
+    }
+} else {
+    console.error("Firebase configuration is missing or incomplete. Cannot initialize Firebase.");
+    // Optionally set a state or show a message indicating Firebase is not initialized
 }
 
 // Custom Confirmation Modal Component
@@ -100,7 +106,7 @@ const App = () => {
 
     const [editingConcern, setEditingConcern] = useState(null);
     const [editingIngredient, setEditingIngredient] = useState(null);
-    const [editingProduct, setEditingProduct] = null;
+    const [editingProduct, setEditingProduct] = useState(null); // Corrected initialization
 
     // State for confirmation modal
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -253,8 +259,11 @@ const App = () => {
 
     // Firebase Initialization and Authentication
     useEffect(() => {
+        // Ensure Firebase app, db, and auth are initialized before proceeding
+        // This check is crucial if the initial Firebase setup failed due to missing config
         if (!app || !db || !auth) {
-            console.error("Firebase not fully initialized.");
+            console.error("Firebase not fully initialized. Skipping auth and data fetch.");
+            setLoading(false); // Stop loading if Firebase didn't initialize
             return;
         }
 
@@ -284,7 +293,7 @@ const App = () => {
 
     // Fetch data from Firestore once authenticated
     useEffect(() => {
-        if (!isAuthReady) {
+        if (!isAuthReady || !db) { // Also check if db is initialized
             return;
         }
 
