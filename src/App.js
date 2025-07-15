@@ -14,10 +14,15 @@ const appId = typeof process.env.REACT_APP_APP_ID !== 'undefined' ? process.env.
 let firebaseConfig = {};
 try {
     // --- ADDED FOR DEBUGGING NETLIFY ENV VAR ISSUE ---
-    console.log("Raw REACT_APP_FIREBASE_CONFIG from process.env:", process.env.REACT_APP_FIREBASE_CONFIG);
+    const rawFirebaseConfig = process.env.REACT_APP_FIREBASE_CONFIG;
+    console.log("Raw REACT_APP_FIREBASE_CONFIG from process.env:");
+    console.log("  Type:", typeof rawFirebaseConfig);
+    console.log("  Length:", rawFirebaseConfig ? rawFirebaseConfig.length : 'N/A');
+    console.log("  First 20 chars:", rawFirebaseConfig ? rawFirebaseConfig.substring(0, 20) : 'N/A');
+    console.log("  Last 20 chars:", rawFirebaseConfig ? rawFirebaseConfig.substring(rawFirebaseConfig.length - 20) : 'N/A');
     // --- END DEBUGGING ADDITION ---
 
-    firebaseConfig = typeof process.env.REACT_APP_FIREBASE_CONFIG !== 'undefined' ? JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG) : {};
+    firebaseConfig = typeof rawFirebaseConfig !== 'undefined' ? JSON.parse(rawFirebaseConfig) : {};
 } catch (e) {
     console.error("Error parsing REACT_APP_FIREBASE_CONFIG:", e);
     // Fallback or error handling if JSON parsing fails
@@ -101,7 +106,7 @@ const App = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [confirmMessage, setConfirmMessage] = useState('');
-    const [confirmShowCancel, setConfirmShowCancel] = useState(true);
+    const [confirmShowCancel, setConfirmShowCancel] = true;
 
     // States for search filters
     const [concernFilter, setConcernFilter] = useState('');
