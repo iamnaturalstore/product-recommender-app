@@ -1,4 +1,4 @@
-/* global __app_id, __firebase_config, __initial_auth_token */
+/* global __initial_auth_token */ // __initial_auth_token is still a Canvas global for specific auth scenarios
 import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -6,9 +6,19 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, addDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { CheckCircle, XCircle, Search, Sparkles, Settings, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Filter } from 'lucide-react';
 
-// Ensure __app_id and __firebase_config are defined in the environment
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+// IMPORTANT: For Netlify deployment, environment variables are accessed via process.env
+// and need to be prefixed with REACT_APP_ (e.g., REACT_APP_APP_ID, REACT_APP_FIREBASE_CONFIG).
+// For local development or Canvas preview, you might use a .env file or specific globals.
+// This code is designed for Netlify deployment.
+const appId = typeof process.env.REACT_APP_APP_ID !== 'undefined' ? process.env.REACT_APP_APP_ID : 'default-app-id';
+let firebaseConfig = {};
+try {
+    firebaseConfig = typeof process.env.REACT_APP_FIREBASE_CONFIG !== 'undefined' ? JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG) : {};
+} catch (e) {
+    console.error("Error parsing REACT_APP_FIREBASE_CONFIG:", e);
+    // Fallback or error handling if JSON parsing fails
+}
+
 
 // Initialize Firebase outside the component to prevent re-initialization
 let app, db, auth;
