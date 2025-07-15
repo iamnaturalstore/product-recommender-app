@@ -838,6 +838,44 @@ const App = () => {
                                 !existingIngredientNamesSet.has(genIng)
                             );
 
+                            const performCustomerRecommendationsAndPersistence = async (finalGeneratedNames) => {
+                                // Add the custom concern to the concerns collection if it doesn't exist
+                                const existingConcern = concerns.find(c => c.name === targetConcern);
+                                if (!existingConcern) {
+                                    try {
+                                        await addDoc(collection(db, `${publicDataPath}/concerns`), { name: targetConcern });
+                                        console.log(`Added new concern: ${targetConcern}`);
+                                    } catch (e) {
+                                        console.error("Error adding custom concern:", e);
+                                    }
+                                }
+
+                                // Create or update the mapping for the custom concern
+                                const existingMapping = concernIngredientMappings.find(m => m.concernName === targetConcern);
+                                const mappingData = {
+                                    concernName: targetConcern,
+                                    ingredientNames: finalGeneratedNames,
+                                };
+
+                                try {
+                                    if (existingMapping) {
+                                        await setDoc(doc(db, `${publicDataPath}/concernIngredientMappings`, existingMapping.id), mappingData);
+                                        console.log(`Updated mapping for custom concern: ${targetConcern}`);
+                                    } else {
+                                        await addDoc(collection(db, `${publicDataPath}/concernIngredientMappings`), mappingData);
+                                        console.log(`Created new mapping for custom concern: ${targetConcern}`);
+                                    }
+                                } catch (e) {
+                                    console.error("Error adding/updating mapping for custom concern:", e);
+                                }
+
+                                // Set recommended ingredients for customer display (full objects)
+                                const allRelevantIngredientObjects = ingredients.filter(ing => finalGeneratedNames.includes(ing.name));
+                                setRecommendedIngredients(allRelevantIngredientObjects);
+                                setCurrentCustomerConcern(targetConcern);
+                            };
+
+
                             if (newIngredientsToPropose.length > 0) {
                                 const message = `The AI suggested new ingredients not in your list: ${newIngredientsToPropose.join(', ')}. Do you want to add them?`;
                                 showConfirmation(message, async () => {
@@ -858,25 +896,20 @@ const App = () => {
                                         const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredientNames])];
                                         setSelectedIngredientsForMapping(allSelected);
                                     } else {
-                                        // For customer: set recommended ingredients for display
-                                        // Filter existing ingredients by name and combine with newly added objects
-                                        const existingGenerated = ingredients.filter(ing => generatedIngredientNames.includes(ing.name));
-                                        const combinedRecommended = [...existingGenerated, ...newlyAddedObjects];
-                                        setRecommendedIngredients(combinedRecommended);
-                                        setCurrentCustomerConcern(targetConcern); // Set the current concern for display
+                                        // For customer: perform all steps (add concern, add mapping, set recommendations)
+                                        await performCustomerRecommendationsAndPersistence(generatedIngredientNames);
                                     }
                                 });
                             } else {
-                                // All generated ingredients already exist
+                                // All generated ingredients already exist or none were new
                                 if (!isCustomerInput) {
                                     const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredientNames])];
                                     setSelectedIngredientsForMapping(allSelected);
                                     showConfirmation("AI generated ingredients and they are all in your existing list.", null, false);
                                 } else {
-                                    const existingGenerated = ingredients.filter(ing => generatedIngredientNames.includes(ing.name));
-                                    setRecommendedIngredients(existingGenerated);
-                                    setCurrentCustomerConcern(targetConcern); // Set the current concern for display
-                                    showConfirmation("AI generated ingredients and they are all in your existing list.", null, false);
+                                    // For customer: perform all steps (add concern, add mapping, set recommendations)
+                                    await performCustomerRecommendationsAndPersistence(generatedIngredientNames);
+                                    showConfirmation("AI generated ingredients and they are all in your existing list.", null, false); // Keep the confirmation for existing
                                 }
                             }
 
