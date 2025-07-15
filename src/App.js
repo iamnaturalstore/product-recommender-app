@@ -760,7 +760,9 @@ const App = () => {
         setSelectedIngredientsForMapping([]); // Clear previous selections
 
         try {
-            const prompt = `For the beauty concern "${selectedConcernForMapping}", list the top 3-5 most effective and common skincare ingredients. Respond as a JSON array of strings, like ["Ingredient 1", "Ingredient 2"]. Do not include any other text.`;
+            // Modified prompt to request 10-15 ingredients, including highly-reviewed and scientifically-tested ones
+            const prompt = `For the beauty concern "${selectedConcernForMapping}", list the top 10-15 most effective and common skincare ingredients, including those highly-rated based on global reviews and the latest modern scientifically-tested ingredients. Respond as a JSON array of strings, like ["Ingredient 1", "Ingredient 2"]. Do not include any other text.`;
+            console.log("Gemini API: Sending prompt:", prompt); // Log the prompt
             let chatHistory = [];
             chatHistory.push({ role: "user", parts: [{ text: prompt }] });
 
@@ -791,57 +793,67 @@ const App = () => {
             });
 
             const result = await response.json();
+            console.log("Gemini API: Raw response result:", result); // Log the raw result
 
-            if (result.candidates && result.candidates.length > 0 &&
-                result.candidates[0].content && result.candidates[0].content.parts &&
-                result.candidates[0].content.parts.length > 0) {
-                const jsonString = result.candidates[0].content.parts[0].text;
-                try {
-                    const generatedIngredients = JSON.parse(jsonString);
-                    if (Array.isArray(generatedIngredients)) {
-                        const existingIngredientNames = new Set(ingredients.map(ing => ing.name));
-                        const newIngredientsToPropose = generatedIngredients.filter(genIng =>
-                            !existingIngredientNames.has(genIng)
-                        );
+            if (response.ok) { // Check if the response was successful (HTTP status 200-299)
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const jsonString = result.candidates[0].content.parts[0].text;
+                    console.log("Gemini API: Parsed JSON string from response:", jsonString); // Log the JSON string
+                    try {
+                        const generatedIngredients = JSON.parse(jsonString);
+                        console.log("Gemini API: Generated ingredients array:", generatedIngredients); // Log the array
+                        if (Array.isArray(generatedIngredients)) {
+                            const existingIngredientNames = new Set(ingredients.map(ing => ing.name));
+                            console.log("Existing ingredient names:", Array.from(existingIngredientNames)); // Log existing ingredients
+                            const newIngredientsToPropose = generatedIngredients.filter(genIng =>
+                                !existingIngredientNames.has(genIng)
+                            );
+                            console.log("New ingredients to propose (not in existing list):", newIngredientsToPropose); // Log new ones
 
-                        if (newIngredientsToPropose.length > 0) {
-                            const message = `The AI suggested new ingredients not in your list: ${newIngredientsToPropose.join(', ')}. Do you want to add them?`;
-                            showConfirmation(message, async () => {
-                                let newlyAddedIds = [];
-                                for (const newIngName of newIngredientsToPropose) {
-                                    const newIngredientObj = await handleAddIngredient(newIngName, 'AI suggested ingredient.');
-                                    if (newIngredientObj) {
-                                        newlyAddedIds.push(newIngredientObj.id);
-                                        // Set the editing ingredient for immediate editing
-                                        setEditingIngredient(newIngredientObj);
-                                        setNewIngredientName(newIngredientObj.name);
-                                        setNewIngredientDescription(newIngredientObj.description);
-                                        setAdminSubTab('ingredients'); // Switch to ingredients tab
+                            if (newIngredientsToPropose.length > 0) {
+                                const message = `The AI suggested new ingredients not in your list: ${newIngredientsToPropose.join(', ')}. Do you want to add them?`;
+                                showConfirmation(message, async () => {
+                                    let newlyAddedIds = [];
+                                    for (const newIngName of newIngredientsToPropose) {
+                                        const newIngredientObj = await handleAddIngredient(newIngName, 'AI suggested ingredient.');
+                                        if (newIngredientObj) {
+                                            newlyAddedIds.push(newIngredientObj.id);
+                                            // Set the editing ingredient for immediate editing
+                                            setEditingIngredient(newIngredientObj);
+                                            setNewIngredientName(newIngredientObj.name);
+                                            setNewIngredientDescription(newIngredientObj.description);
+                                            setAdminSubTab('ingredients'); // Switch to ingredients tab
+                                        }
                                     }
-                                }
-                                setNewlyAddedAIIngredientIds(prev => [...prev, ...newlyAddedIds]);
-                                // After adding, update the selected ingredients for mapping
+                                    setNewlyAddedAIIngredientIds(prev => [...prev, ...newlyAddedIds]);
+                                    // After adding, update the selected ingredients for mapping
+                                    const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredients])];
+                                    setSelectedIngredientsForMapping(allSelected);
+                                });
+                            } else {
+                                // All generated ingredients already exist or none were new
                                 const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredients])];
                                 setSelectedIngredientsForMapping(allSelected);
-                            });
-                        } else {
-                            // All generated ingredients already exist or none were new
-                            const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredients])];
-                            setSelectedIngredientsForMapping(allSelected);
-                            showConfirmation("AI generated ingredients and they are all in your existing list.", null, false);
-                        }
+                                showConfirmation("AI generated ingredients and they are all in your existing list.", null, false);
+                            }
 
-                    } else {
-                        console.error("Gemini response was not a JSON array:", jsonString);
-                        showConfirmation("Failed to parse AI response. Invalid JSON format.", null, false);
+                        } else {
+                            console.error("Gemini response was not a JSON array:", jsonString);
+                            showConfirmation("Failed to parse AI response. Invalid JSON format.", null, false);
+                        }
+                    } catch (parseError) {
+                        console.error("Error parsing AI response JSON:", parseError, jsonString);
+                        showConfirmation("Failed to process AI response. Invalid JSON format.", null, false);
                     }
-                } catch (parseError) {
-                    console.error("Error parsing AI response JSON:", parseError, jsonString);
-                    showConfirmation("Failed to process AI response. Invalid JSON format.", null, false);
+                } else {
+                    console.error("Gemini API response structure unexpected or missing content:", result);
+                    showConfirmation("AI could not generate recommendations. Please try again. Response was empty or malformed.", null, false);
                 }
             } else {
-                console.error("Gemini API response structure unexpected:", result);
-                showConfirmation("AI could not generate recommendations. Please try again.", null, false);
+                console.error(`Gemini API request failed with status ${response.status}:`, result);
+                showConfirmation(`AI service error: ${response.status}. Please check your API key and billing.`, null, false);
             }
         } catch (error) {
             console.error("Error calling Gemini API:", error);
@@ -1383,73 +1395,73 @@ const App = () => {
                                                 className="px-5 py-3 bg-gray-400 text-white font-semibold rounded-md shadow-md hover:bg-gray-500 transition-colors duration-200 flex items-center"
                                             >
                                                 <X className="w-5 h-5 mr-2" /> Cancel
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={handleAddProduct}
+                                                className="px-5 py-3 bg-purple-500 text-white font-semibold rounded-md shadow-md hover:bg-purple-600 transition-colors duration-200 flex items-center mt-4"
+                                            >
+                                                <PlusCircle className="w-5 h-5 mr-2" /> Add Product
                                             </button>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={handleAddProduct}
-                                            className="px-5 py-3 bg-purple-500 text-white font-semibold rounded-md shadow-md hover:bg-purple-600 transition-colors duration-200 flex items-center mt-4"
-                                        >
-                                            <PlusCircle className="w-5 h-5 mr-2" /> Add Product
-                                        </button>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
 
-                                <h3 className="text-xl font-semibold text-purple-600 mb-3">Existing Products</h3>
-                                <div className="relative mb-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Search products..."
-                                        value={productFilter}
-                                        onChange={(e) => setProductFilter(e.target.value)}
-                                        className="w-full p-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                    />
-                                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                </div>
-                                <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-purple-200">
-                                    {filteredProducts.length > 0 ? (
-                                        <ul className="divide-y divide-gray-200">
-                                            {filteredProducts.map(product => (
-                                                <li key={product.id} className="p-4 hover:bg-gray-50 transition-colors flex flex-col sm:flex-row items-center sm:items-start gap-4">
-                                                    <div className="flex items-center flex-shrink-0">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedProductIds.includes(product.id)}
-                                                            onChange={() => handleToggleSelectProduct(product.id)}
-                                                            className="mr-3 h-5 w-5 text-purple-600 rounded focus:ring-purple-500"
-                                                        />
-                                                        <img
-                                                            src={product.imageUrl}
-                                                            alt={product.name}
-                                                            className="w-20 h-20 rounded-md object-cover"
-                                                            onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/80x80/CCCCCC/000000?text=Prod` }}
-                                                        />
-                                                    </div>
-                                                    <div className="flex-grow text-center sm:text-left">
-                                                        <span className="text-lg font-medium text-purple-800">{product.name}</span>
-                                                        <p className="text-sm text-gray-600 mb-1">{product.description}</p>
-                                                        <div className="flex flex-wrap justify-center sm:justify-start gap-1">
-                                                            {product.targetIngredients && product.targetIngredients.map((ing, index) => (
-                                                                <span key={index} className="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full">
-                                                                    {ing}
-                                                                </span>
-                                                            ))}
+                                    <h3 className="text-xl font-semibold text-purple-600 mb-3">Existing Products</h3>
+                                    <div className="relative mb-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Search products..."
+                                            value={productFilter}
+                                            onChange={(e) => setProductFilter(e.target.value)}
+                                            className="w-full p-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                        />
+                                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    </div>
+                                    <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-purple-200">
+                                        {filteredProducts.length > 0 ? (
+                                            <ul className="divide-y divide-gray-200">
+                                                {filteredProducts.map(product => (
+                                                    <li key={product.id} className="p-4 hover:bg-gray-50 transition-colors flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                                                        <div className="flex items-center flex-shrink-0">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedProductIds.includes(product.id)}
+                                                                onChange={() => handleToggleSelectProduct(product.id)}
+                                                                className="mr-3 h-5 w-5 text-purple-600 rounded focus:ring-purple-500"
+                                                            />
+                                                            <img
+                                                                src={product.imageUrl}
+                                                                alt={product.name}
+                                                                className="w-20 h-20 rounded-md object-cover"
+                                                                onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/80x80/CCCCCC/000000?text=Prod` }}
+                                                            />
                                                         </div>
-                                                    </div>
-                                                    <div className="flex gap-2 flex-shrink-0 mt-3 sm:mt-0">
-                                                        <button
-                                                            onClick={() => handleEditProduct(product)}
-                                                            className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
-                                                            title="Edit Product"
-                                                        >
-                                                            <Edit className="w-5 h-5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteProduct(product.id)}
-                                                            className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                                                            title="Delete Product"
-                                                        >
-                                                            <Trash2 className="w-5 h-5" />
+                                                        <div className="flex-grow text-center sm:text-left">
+                                                            <span className="text-lg font-medium text-purple-800">{product.name}</span>
+                                                            <p className="text-sm text-gray-600 mb-1">{product.description}</p>
+                                                            <div className="flex flex-wrap justify-center sm:justify-start gap-1">
+                                                                {product.targetIngredients && product.targetIngredients.map((ing, index) => (
+                                                                    <span key={index} className="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full">
+                                                                        {ing}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2 flex-shrink-0 mt-3 sm:mt-0">
+                                                            <button
+                                                                onClick={() => handleEditProduct(product)}
+                                                                className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                                                                title="Edit Product"
+                                                            >
+                                                                <Edit className="w-5 h-5" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteProduct(product.id)}
+                                                                className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                                                                title="Delete Product"
+                                                            >
+                                                                <Trash2 className="w-5 h-5" />
                                                             </button>
                                                         </div>
                                                     </li>
