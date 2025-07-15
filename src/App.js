@@ -136,6 +136,10 @@ const App = () => {
     // New state for simulated user role
     const [userRole, setUserRole] = useState('customer'); // 'customer' or 'admin'
 
+    // New state for custom concern input and current recommendations source
+    const [customConcernInput, setCustomConcernInput] = useState('');
+    const [currentCustomerConcern, setCurrentCustomerConcern] = useState(''); // Stores the concern that recommendations are based on
+
     const publicDataPath = `artifacts/${appId}/public/data`;
 
     // Function to add sample data (for demonstration purposes)
@@ -364,19 +368,29 @@ const App = () => {
 
     // Logic to update recommendations based on selected concerns and dynamic mappings
     useEffect(() => {
-        if (selectedConcerns.length === 0) {
+        if (selectedConcerns.length === 0 && !customConcernInput) { // Adjusted condition
             setRecommendedIngredients([]);
             setRecommendedProducts([]);
+            setCurrentCustomerConcern(''); // Clear current customer concern
             return;
         }
 
         const uniqueRecommendedIngredients = new Set();
-        selectedConcerns.forEach(concernName => {
-            const mapping = concernIngredientMappings.find(m => m.concernName === concernName);
-            if (mapping && mapping.ingredientNames) {
-                mapping.ingredientNames.forEach(ing => uniqueRecommendedIngredients.add(ing));
-            }
-        });
+        // If custom concern is active, prioritize it for recommendations
+        if (currentCustomerConcern) {
+            // For custom concerns, AI directly provides ingredients, so we don't use mappings here
+            // The ingredients are already set by handleGenerateRecommendationsForCustomer
+            // We just need to filter products based on the recommended ingredients
+            recommendedIngredients.forEach(ing => uniqueRecommendedIngredients.add(ing.name)); // Assuming recommendedIngredients holds full objects
+        } else {
+            selectedConcerns.forEach(concernName => {
+                const mapping = concernIngredientMappings.find(m => m.concernName === concernName);
+                if (mapping && mapping.ingredientNames) {
+                    mapping.ingredientNames.forEach(ing => uniqueRecommendedIngredients.add(ing));
+                }
+            });
+        }
+
 
         const filteredIngredients = ingredients.filter(ing => uniqueRecommendedIngredients.has(ing.name));
         setRecommendedIngredients(filteredIngredients);
@@ -388,7 +402,7 @@ const App = () => {
         );
         setRecommendedProducts(filteredProducts);
 
-    }, [selectedConcerns, ingredients, products, concernIngredientMappings]); // Added concernIngredientMappings to dependencies
+    }, [selectedConcerns, ingredients, products, concernIngredientMappings, customConcernInput, currentCustomerConcern]); // Added customConcernInput and currentCustomerConcern to dependencies
 
     const handleConcernToggle = (concernName) => {
         setSelectedConcerns(prevSelected =>
@@ -396,6 +410,8 @@ const App = () => {
                 ? prevSelected.filter(name => name !== concernName)
                 : [...prevSelected, concernName]
         );
+        setCustomConcernInput(''); // Clear custom input when pre-defined concerns are selected
+        setCurrentCustomerConcern(''); // Clear custom concern source
     };
 
     // --- Confirmation Modal Handlers ---
@@ -753,20 +769,27 @@ const App = () => {
         setEditingMapping(null);
     };
 
-    // --- Gemini API Integration ---
-    const handleGenerateMappingWithAI = async () => {
-        if (!selectedConcernForMapping) {
-            showConfirmation("Please select a beauty concern first to generate ingredients.", null, false);
+    // --- Gemini API Integration (Unified for Admin and Customer) ---
+    const handleGenerateMappingWithAI = async (concernToGenerateFor, isCustomerInput = false) => {
+        const targetConcern = concernToGenerateFor || selectedConcernForMapping;
+
+        if (!targetConcern) {
+            showConfirmation("Please select or enter a beauty concern to generate ingredients.", null, false);
             return;
         }
 
         setGeneratingMapping(true);
-        setSelectedIngredientsForMapping([]); // Clear previous selections
+        if (!isCustomerInput) {
+            setSelectedIngredientsForMapping([]); // Clear previous selections only for admin mapping
+        } else {
+            setRecommendedIngredients([]); // Clear previous customer recommendations
+            setRecommendedProducts([]);
+        }
+
 
         try {
-            // Modified prompt to request 10-15 ingredients, including highly-reviewed and scientifically-tested ones
-            const prompt = `For the beauty concern "${selectedConcernForMapping}", list the top 10-15 most effective and common skincare ingredients, including those highly-rated based on global reviews and the latest modern scientifically-tested ingredients. Respond as a JSON array of strings, like ["Ingredient 1", "Ingredient 2"]. Do not include any other text.`;
-            console.log("Gemini API: Sending prompt:", prompt); // Log the prompt
+            const prompt = `For the beauty concern "${targetConcern}", list the top 10-15 most effective and common skincare ingredients, including those highly-rated based on global reviews and the latest modern scientifically-tested ingredients. Respond as a JSON array of strings, like ["Ingredient 1", "Ingredient 2"]. Do not include any other text.`;
+            console.log("Gemini API: Sending prompt:", prompt);
             let chatHistory = [];
             chatHistory.push({ role: "user", parts: [{ text: prompt }] });
 
@@ -780,8 +803,7 @@ const App = () => {
                     }
                 }
             };
-            // Use environment variable for API key
-            const apiKey = process.env.REACT_APP_GEMINI_API_KEY || ""; 
+            const apiKey = process.env.REACT_APP_GEMINI_API_KEY || "";
             if (!apiKey) {
                 console.error("Gemini API Key is missing. Please set REACT_APP_GEMINI_API_KEY in Netlify environment variables.");
                 showConfirmation("Gemini API Key is not configured. Please contact support.", null, false);
@@ -797,30 +819,28 @@ const App = () => {
             });
 
             const result = await response.json();
-            console.log("Gemini API: Raw response result:", result); // Log the raw result
+            console.log("Gemini API: Raw response result:", result);
 
-            if (response.ok) { // Check if the response was successful (HTTP status 200-299)
+            if (response.ok) {
                 if (result.candidates && result.candidates.length > 0 &&
                     result.candidates[0].content && result.candidates[0].content.parts &&
                     result.candidates[0].content.parts.length > 0) {
                     const jsonString = result.candidates[0].content.parts[0].text;
-                    console.log("Gemini API: Parsed JSON string from response:", jsonString); // Log the JSON string
+                    console.log("Gemini API: Parsed JSON string from response:", jsonString);
                     try {
-                        const generatedIngredients = JSON.parse(jsonString);
-                        console.log("Gemini API: Generated ingredients array:", generatedIngredients); // Log the array
-                        if (Array.isArray(generatedIngredients)) {
-                            const existingIngredientNames = new Set(ingredients.map(ing => ing.name));
-                            console.log("Existing ingredient names:", Array.from(existingIngredientNames)); // Log existing ingredients
-                            const newIngredientsToPropose = generatedIngredients.filter(genIng =>
-                                !existingIngredientNames.has(genIng)
+                        const generatedIngredientNames = JSON.parse(jsonString);
+                        console.log("Gemini API: Generated ingredients array:", generatedIngredientNames);
+
+                        if (Array.isArray(generatedIngredientNames)) {
+                            const existingIngredientNamesSet = new Set(ingredients.map(ing => ing.name));
+                            const newIngredientsToPropose = generatedIngredientNames.filter(genIng =>
+                                !existingIngredientNamesSet.has(genIng)
                             );
-                            console.log("New ingredients to propose (not in existing list):", newIngredientsToPropose); // Log new ones
 
                             if (newIngredientsToPropose.length > 0) {
                                 const message = `The AI suggested new ingredients not in your list: ${newIngredientsToPropose.join(', ')}. Do you want to add them?`;
-                                console.log("Attempting to show confirmation modal for new ingredients."); // NEW LOG
                                 showConfirmation(message, async () => {
-                                    let newlyAddedObjects = []; // To store the full ingredient objects
+                                    let newlyAddedObjects = [];
                                     for (const newIngName of newIngredientsToPropose) {
                                         const newIngredientObj = await handleAddIngredient(newIngName, 'AI suggested ingredient.');
                                         if (newIngredientObj) {
@@ -832,17 +852,31 @@ const App = () => {
                                     setIngredients(prevIngredients => [...prevIngredients, ...newlyAddedObjects]);
                                     setNewlyAddedAIIngredientIds(newlyAddedObjects.map(ing => ing.id));
 
-                                    // After adding and updating local state, update the selected ingredients for mapping
-                                    const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredients])];
-                                    setSelectedIngredientsForMapping(allSelected);
-                                    console.log("Updated selectedIngredientsForMapping after adding new:", allSelected); // NEW LOG
+                                    if (!isCustomerInput) {
+                                        // For admin: update selected ingredients for mapping
+                                        const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredientNames])];
+                                        setSelectedIngredientsForMapping(allSelected);
+                                    } else {
+                                        // For customer: set recommended ingredients for display
+                                        const newlyAddedNames = newlyAddedObjects.map(obj => obj.name);
+                                        const existingGenerated = ingredients.filter(ing => generatedIngredientNames.includes(ing.name));
+                                        const combinedRecommended = [...existingGenerated, ...newlyAddedObjects];
+                                        setRecommendedIngredients(combinedRecommended);
+                                        setCurrentCustomerConcern(targetConcern); // Set the current concern for display
+                                    }
                                 });
                             } else {
-                                // All generated ingredients already exist or none were new
-                                const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredients])];
-                                setSelectedIngredientsForMapping(allSelected);
-                                console.log("Updated selectedIngredientsForMapping (all existing):", allSelected); // NEW LOG
-                                showConfirmation("AI generated ingredients and they are all in your existing list.", null, false);
+                                // All generated ingredients already exist
+                                if (!isCustomerInput) {
+                                    const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredientNames])];
+                                    setSelectedIngredientsForMapping(allSelected);
+                                    showConfirmation("AI generated ingredients and they are all in your existing list.", null, false);
+                                } else {
+                                    const existingGenerated = ingredients.filter(ing => generatedIngredientNames.includes(ing.name));
+                                    setRecommendedIngredients(existingGenerated);
+                                    setCurrentCustomerConcern(targetConcern); // Set the current concern for display
+                                    showConfirmation("AI generated ingredients and they are all in your existing list.", null, false);
+                                }
                             }
 
                         } else {
@@ -868,6 +902,17 @@ const App = () => {
             setGeneratingMapping(false);
         }
     };
+
+    const handleGenerateRecommendationsForCustomer = async () => {
+        if (customConcernInput.trim() === '') {
+            showConfirmation("Please enter a concern to get recommendations.", null, false);
+            return;
+        }
+        setSelectedConcerns([]); // Clear any pre-selected concerns
+        setCurrentCustomerConcern(customConcernInput.trim()); // Set the current customer concern for display
+        await handleGenerateMappingWithAI(customConcernInput.trim(), true); // Pass true for isCustomerInput
+    };
+
 
     // Effect to clear newly added AI ingredient highlights after a delay
     useEffect(() => {
@@ -1010,12 +1055,55 @@ const App = () => {
                             </div>
                         </section>
 
-                        {selectedConcerns.length > 0 && (
+                        <section className="mb-8 p-4 bg-pink-50 rounded-lg shadow-inner">
+                            <h2 className="text-xl sm:text-2xl font-semibold text-pink-600 mb-4 flex items-center gap-2">
+                                <Brain className="w-6 h-6" />
+                                Or Enter Your Own Concern
+                            </h2>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <input
+                                    type="text"
+                                    placeholder="e.g., 'Dull skin and dark spots'"
+                                    value={customConcernInput}
+                                    onChange={(e) => {
+                                        setCustomConcernInput(e.target.value);
+                                        setSelectedConcerns([]); // Clear pre-defined selections when custom input is used
+                                    }}
+                                    className="flex-grow p-3 border border-pink-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-400"
+                                />
+                                <button
+                                    onClick={handleGenerateRecommendationsForCustomer}
+                                    disabled={customConcernInput.trim() === '' || generatingMapping}
+                                    className={`px-5 py-3 rounded-md shadow-md transition-colors duration-200 flex items-center justify-center
+                                        ${customConcernInput.trim() === '' || generatingMapping
+                                            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                            : 'bg-pink-500 text-white hover:bg-pink-600'
+                                        }`}
+                                >
+                                    {generatingMapping ? (
+                                        <span className="flex items-center">
+                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Generating...
+                                        </span>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="w-5 h-5 mr-2" /> Get Recommendations
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </section>
+
+                        {(selectedConcerns.length > 0 || currentCustomerConcern) && (
                             <>
-                                <section className="mb-8 p-4 bg-pink-50 rounded-lg shadow-inner">
-                                    <h2 className="text-xl sm:text-2xl font-semibold text-pink-600 mb-4 flex items-center gap-2">
+                                <section className="mb-8 p-4 bg-purple-50 rounded-lg shadow-inner">
+                                    <h2 className="text-xl sm:text-2xl font-semibold text-purple-600 mb-4 flex items-center gap-2">
                                         <Sparkles className="w-6 h-6" />
-                                        Recommended Ingredients
+                                        Recommended Ingredients {currentCustomerConcern && `for "${currentCustomerConcern}"`}
+                                        {!currentCustomerConcern && selectedConcerns.length > 0 && `for ${selectedConcerns.join(', ')}`}
                                     </h2>
                                     {recommendedIngredients.length > 0 ? (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1031,10 +1119,11 @@ const App = () => {
                                     )}
                                 </section>
 
-                                <section className="p-4 bg-purple-50 rounded-lg shadow-inner">
-                                    <h2 className="text-xl sm:text-2xl font-semibold text-purple-600 mb-4 flex items-center gap-2">
+                                <section className="p-4 bg-pink-50 rounded-lg shadow-inner">
+                                    <h2 className="text-xl sm:text-2xl font-semibold text-pink-600 mb-4 flex items-center gap-2">
                                         <Sparkles className="w-6 h-6" />
-                                        Recommended Products
+                                        Recommended Products {currentCustomerConcern && `for "${currentCustomerConcern}"`}
+                                        {!currentCustomerConcern && selectedConcerns.length > 0 && `for ${selectedConcerns.join(', ')}`}
                                     </h2>
                                     {recommendedProducts.length > 0 ? (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1514,7 +1603,7 @@ const App = () => {
                                         </select>
 
                                         <button
-                                            onClick={handleGenerateMappingWithAI}
+                                            onClick={() => handleGenerateMappingWithAI(selectedConcernForMapping, false)} // Pass false for isCustomerInput
                                             disabled={!selectedConcernForMapping || generatingMapping}
                                             className={`px-5 py-3 rounded-md shadow-md transition-colors duration-200 flex items-center justify-center
                                                 ${!selectedConcernForMapping || generatingMapping
