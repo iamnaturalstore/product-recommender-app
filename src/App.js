@@ -23,6 +23,7 @@ try {
     // --- END DEBUGGING ADDITION ---
 
     firebaseConfig = typeof rawFirebaseConfig !== 'undefined' ? JSON.parse(rawFirebaseConfig) : {};
+    console.log("Parsed firebaseConfig:", firebaseConfig); // Re-added this log
 } catch (e) {
     console.error("Error parsing REACT_APP_FIREBASE_CONFIG:", e);
     // Fallback or error handling if JSON parsing fails
