@@ -142,6 +142,7 @@ const App = () => {
             console.error("Firestore not initialized. Cannot add sample data.");
             return;
         }
+        console.log("Attempting to add sample data to path:", publicDataPath); // Log the path
 
         // Sample Concerns
         const sampleConcerns = [
@@ -226,6 +227,8 @@ const App = () => {
             for (const concern of sampleConcerns) {
                 await setDoc(doc(concernsColRef, concern.id), concern);
             }
+        } else {
+            console.log("Concerns collection is not empty. Skipping sample data addition for concerns.");
         }
 
         const ingredientsColRef = collection(db, `${publicDataPath}/ingredients`);
@@ -235,6 +238,8 @@ const App = () => {
             for (const ingredient of sampleIngredients) {
                 await setDoc(doc(ingredientsColRef, ingredient.id), ingredient);
             }
+        } else {
+            console.log("Ingredients collection is not empty. Skipping sample data addition for ingredients.");
         }
 
         const productsColRef = collection(db, `${publicDataPath}/products`);
@@ -244,6 +249,8 @@ const App = () => {
             for (const product of sampleProducts) {
                 await setDoc(doc(productsColRef, product.id), product);
             }
+        } else {
+            console.log("Products collection is not empty. Skipping sample data addition for products.");
         }
 
         const mappingsColRef = collection(db, `${publicDataPath}/concernIngredientMappings`);
@@ -253,6 +260,8 @@ const App = () => {
             for (const mapping of sampleMappings) {
                 await setDoc(doc(mappingsColRef, mapping.id), mapping);
             }
+        } else {
+            console.log("Mappings collection is not empty. Skipping sample data addition for mappings.");
         }
         console.log("Sample data check/addition complete.");
     }, [publicDataPath]); // Dependencies for useCallback: publicDataPath is a constant, db is outside component
@@ -294,7 +303,9 @@ const App = () => {
 
     // Fetch data from Firestore once authenticated
     useEffect(() => {
+        console.log("Data fetch useEffect triggered. isAuthReady:", isAuthReady, "db:", !!db);
         if (!isAuthReady || !db) { // Also check if db is initialized
+            console.log("Data fetch skipped: Auth not ready or db not initialized.");
             return;
         }
 
@@ -304,6 +315,7 @@ const App = () => {
         // Listen for concerns
         const unsubscribeConcerns = onSnapshot(collection(db, `${publicDataPath}/concerns`), (snapshot) => {
             const fetchedConcerns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            console.log("Fetched concerns:", fetchedConcerns); // Log fetched concerns
             setConcerns(fetchedConcerns);
             setLoading(false);
         }, (error) => {
@@ -314,6 +326,7 @@ const App = () => {
         // Listen for ingredients
         const unsubscribeIngredients = onSnapshot(collection(db, `${publicDataPath}/ingredients`), (snapshot) => {
             const fetchedIngredients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            console.log("Fetched ingredients:", fetchedIngredients); // Log fetched ingredients
             setIngredients(fetchedIngredients);
         }, (error) => {
             console.error("Error fetching ingredients:", error);
@@ -322,6 +335,7 @@ const App = () => {
         // Listen for products
         const unsubscribeProducts = onSnapshot(collection(db, `${publicDataPath}/products`), (snapshot) => {
             const fetchedProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            console.log("Fetched products:", fetchedProducts); // Log fetched products
             setProducts(fetchedProducts);
         }, (error) => {
             console.error("Error fetching products:", error);
@@ -330,6 +344,7 @@ const App = () => {
         // Listen for concern-ingredient mappings
         const unsubscribeMappings = onSnapshot(collection(db, `${publicDataPath}/concernIngredientMappings`), (snapshot) => {
             const fetchedMappings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            console.log("Fetched mappings:", fetchedMappings); // Log fetched mappings
             setConcernIngredientMappings(fetchedMappings);
         }, (error) => {
             console.error("Error fetching concern ingredient mappings:", error);
@@ -759,7 +774,14 @@ const App = () => {
                     }
                 }
             };
-            const apiKey = ""; // Canvas will provide this at runtime for gemini-2.0-flash
+            // Use environment variable for API key
+            const apiKey = process.env.REACT_APP_GEMINI_API_KEY || ""; 
+            if (!apiKey) {
+                console.error("Gemini API Key is missing. Please set REACT_APP_GEMINI_API_KEY in Netlify environment variables.");
+                showConfirmation("Gemini API Key is not configured. Please contact support.", null, false);
+                setGeneratingMapping(false);
+                return;
+            }
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
             const response = await fetch(apiUrl, {
