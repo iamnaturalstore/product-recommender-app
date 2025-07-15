@@ -1,5 +1,6 @@
 /* global __initial_auth_token */ // __initial_auth_token is still a Canvas global for specific auth scenarios
 import React, { useState, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom'; // Import ReactDOM for portals
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 // eslint-disable-next-line no-unused-vars
@@ -49,17 +50,16 @@ if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId) {
 
 // Custom Confirmation Modal Component
 const ConfirmationModal = ({ message, onConfirm, onCancel, showCancel = true }) => {
-    // Added a console log to confirm if the component itself is rendering
+    // Revert aggressive styling, keep high z-index and standard modal look
     console.log("ConfirmationModal is rendering!");
     return (
-        // Increased opacity, changed color, higher z-index, and added a distinct border to the modal content
-        <div className="fixed inset-0 bg-red-800 bg-opacity-75 flex items-center justify-center z-[9999]">
-            <div className="bg-blue-200 p-6 rounded-lg shadow-xl max-w-sm w-full text-center border-4 border-green-500">
-                <p className="text-lg font-semibold mb-6">{message}</p>
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-[9999]">
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center border border-gray-200">
+                <p className="text-lg font-semibold mb-6 text-gray-800">{message}</p>
                 <div className="flex justify-center gap-4">
                     <button
                         onClick={onConfirm}
-                        className="px-5 py-2 bg-red-500 text-white font-semibold rounded-md shadow-md hover:bg-red-600 transition-colors"
+                        className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 transition-colors"
                     >
                         Confirm
                     </button>
@@ -820,20 +820,19 @@ const App = () => {
                                 const message = `The AI suggested new ingredients not in your list: ${newIngredientsToPropose.join(', ')}. Do you want to add them?`;
                                 console.log("Attempting to show confirmation modal for new ingredients."); // NEW LOG
                                 showConfirmation(message, async () => {
-                                    let newlyAddedIds = [];
+                                    let newlyAddedObjects = []; // To store the full ingredient objects
                                     for (const newIngName of newIngredientsToPropose) {
                                         const newIngredientObj = await handleAddIngredient(newIngName, 'AI suggested ingredient.');
                                         if (newIngredientObj) {
-                                            newlyAddedIds.push(newIngredientObj.id);
-                                            // Set the editing ingredient for immediate editing
-                                            setEditingIngredient(newIngredientObj);
-                                            setNewIngredientName(newIngredientObj.name);
-                                            setNewIngredientDescription(newIngredientObj.description);
-                                            setAdminSubTab('ingredients'); // Switch to ingredients tab
+                                            newlyAddedObjects.push(newIngredientObj);
                                         }
                                     }
-                                    setNewlyAddedAIIngredientIds(prev => [...prev, ...newlyAddedIds]);
-                                    // After adding, update the selected ingredients for mapping
+
+                                    // Optimistically update the ingredients state
+                                    setIngredients(prevIngredients => [...prevIngredients, ...newlyAddedObjects]);
+                                    setNewlyAddedAIIngredientIds(newlyAddedObjects.map(ing => ing.id));
+
+                                    // After adding and updating local state, update the selected ingredients for mapping
                                     const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredients])];
                                     setSelectedIngredientsForMapping(allSelected);
                                     console.log("Updated selectedIngredientsForMapping after adding new:", allSelected); // NEW LOG
@@ -913,13 +912,15 @@ const App = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100 p-4 sm:p-6 font-inter text-gray-800">
-            {showConfirmModal && (
+            {/* Render ConfirmationModal using a Portal */}
+            {showConfirmModal && ReactDOM.createPortal(
                 <ConfirmationModal
                     message={confirmMessage}
                     onConfirm={handleConfirm}
                     onCancel={handleCancelConfirm}
                     showCancel={confirmShowCancel}
-                />
+                />,
+                document.body // Render directly into the document body
             )}
 
             <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-8">
