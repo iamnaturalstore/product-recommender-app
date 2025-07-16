@@ -366,7 +366,6 @@ const App = () => {
         };
     }, [isAuthReady, addSampleData, publicDataPath]); // 'db' is removed as it's a static object from outside the component
 
-    // Logic to update recommendations based on selected concerns and dynamic mappings
 // Logic to update recommendations based on selected concerns and dynamic mappings
     useEffect(() => {
         if (selectedConcerns.length === 0 && !currentCustomerConcern) {
@@ -379,9 +378,7 @@ const App = () => {
         const uniqueRecommendedIngredients = new Set();
         // If custom concern is active, prioritize it for recommendations
         if (currentCustomerConcern) {
-            // For custom concerns, AI directly provides ingredients, so we don't use mappings here
-            // The ingredients are already set by handleGenerateRecommendationsForCustomer
-            // We just need to filter products based on the recommended ingredients
+            // eslint-disable-next-line react-hooks/exhaustive-deps
             recommendedIngredients.forEach(ing => uniqueRecommendedIngredients.add(ing.name)); // Assuming recommendedIngredients holds full objects
         } else {
             selectedConcerns.forEach(concernName => {
@@ -402,8 +399,7 @@ const App = () => {
         );
         setRecommendedProducts(filteredProducts);
 
-    }, [selectedConcerns, ingredients, products, concernIngredientMappings, currentCustomerConcern]); // REMOVED: recommendedIngredients and customConcernInput
-
+    }, [selectedConcerns, ingredients, products, concernIngredientMappings, currentCustomerConcern]);
     const handleConcernToggle = (concernName) => {
         setSelectedConcerns(prevSelected =>
             prevSelected.includes(concernName)
