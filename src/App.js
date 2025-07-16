@@ -367,11 +367,12 @@ const App = () => {
     }, [isAuthReady, addSampleData, publicDataPath]); // 'db' is removed as it's a static object from outside the component
 
     // Logic to update recommendations based on selected concerns and dynamic mappings
+// Logic to update recommendations based on selected concerns and dynamic mappings
     useEffect(() => {
-        if (selectedConcerns.length === 0 && !currentCustomerConcern) { // Adjusted condition
+        if (selectedConcerns.length === 0 && !currentCustomerConcern) {
             setRecommendedIngredients([]);
             setRecommendedProducts([]);
-            setCurrentCustomerConcern(''); // Clear current customer concern
+            setCurrentCustomerConcern('');
             return;
         }
 
@@ -391,7 +392,6 @@ const App = () => {
             });
         }
 
-
         const filteredIngredients = ingredients.filter(ing => uniqueRecommendedIngredients.has(ing.name));
         setRecommendedIngredients(filteredIngredients);
 
@@ -402,8 +402,7 @@ const App = () => {
         );
         setRecommendedProducts(filteredProducts);
 
-    }, [selectedConcerns, ingredients, products, concernIngredientMappings, customConcernInput, currentCustomerConcern, recommendedIngredients]); // Added recommendedIngredients to dependency array
-
+    }, [selectedConcerns, ingredients, products, concernIngredientMappings, currentCustomerConcern]); // REMOVED: recommendedIngredients and customConcernInput
 
     const handleConcernToggle = (concernName) => {
         setSelectedConcerns(prevSelected =>
