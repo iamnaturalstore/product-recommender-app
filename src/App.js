@@ -366,7 +366,8 @@ const App = () => {
         };
     }, [isAuthReady, addSampleData, publicDataPath]); // 'db' is removed as it's a static object from outside the component
 
-// Logic to update recommendations based on selected concerns and dynamic mappings
+// eslint-disable-next-line react-hooks/exhaustive-deps
+    // Logic to update recommendations based on selected concerns and dynamic mappings
     useEffect(() => {
         if (selectedConcerns.length === 0 && !currentCustomerConcern) {
             setRecommendedIngredients([]);
@@ -378,7 +379,6 @@ const App = () => {
         const uniqueRecommendedIngredients = new Set();
         // If custom concern is active, prioritize it for recommendations
         if (currentCustomerConcern) {
-            // eslint-disable-next-line react-hooks/exhaustive-deps
             recommendedIngredients.forEach(ing => uniqueRecommendedIngredients.add(ing.name)); // Assuming recommendedIngredients holds full objects
         } else {
             selectedConcerns.forEach(concernName => {
@@ -399,8 +399,8 @@ const App = () => {
         );
         setRecommendedProducts(filteredProducts);
 
-    }, [selectedConcerns, ingredients, products, concernIngredientMappings, currentCustomerConcern]);
-    const handleConcernToggle = (concernName) => {
+    }, [selectedConcerns, ingredients, products, concernIngredientMappings, currentCustomerConcern]);   const handleConcernToggle = (concernName) => {
+
         setSelectedConcerns(prevSelected =>
             prevSelected.includes(concernName)
                 ? prevSelected.filter(name => name !== concernName)
