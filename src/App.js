@@ -5,7 +5,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 // eslint-disable-next-line no-unused-vars
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, addDoc, deleteDoc, getDocs } from 'firebase/firestore';
-import { CheckCircle, XCircle, Search, Sparkles, Settings, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Filter } from 'lucide-react';
+import { CheckCircle, XCircle, Search, Sparkles, Settings, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Filter, Download } from 'lucide-react'; // Added Download icon
 
 // IMPORTANT: For Netlify deployment, environment variables are accessed via process.env
 // and need to be prefixed with REACT_APP_ (e.g., REACT_APP_APP_ID, REACT_APP_FIREBASE_CONFIG).
@@ -116,7 +116,7 @@ const App = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [confirmMessage, setConfirmMessage] = useState('');
-    const [confirmShowCancel, setConfirmShowCancel] = useState(true); // Changed to useState for proper dependency
+    const [confirmShowCancel, setConfirmShowCancel] = useState(true);
 
     // States for search filters
     const [concernFilter, setConcernFilter] = useState('');
@@ -139,6 +139,12 @@ const App = () => {
     // New state for custom concern input and current recommendations source
     const [customConcernInput, setCustomConcernInput] = useState('');
     const [currentCustomerConcern, setCurrentCustomerConcern] = useState(''); // Stores the concern that recommendations are based on
+
+    // NEW STATES for Shopify Integration
+    const [shopifyStoreDomain, setShopifyStoreDomain] = useState('');
+    const [shopifyApiKey, setShopifyApiKey] = useState('');
+    const [fetchingShopifyProducts, setFetchingShopifyProducts] = useState(false);
+
 
     const publicDataPath = `artifacts/${appId}/public/data`;
 
@@ -271,7 +277,7 @@ const App = () => {
             console.log("Mappings collection is not empty. Skipping sample data addition for mappings.");
         }
         console.log("Sample data check/addition complete.");
-    }, [publicDataPath]); // Dependencies for useCallback: publicDataPath is a constant, db is outside component
+    }, [publicDataPath]);
 
 
     // Firebase Initialization and Authentication
@@ -366,28 +372,30 @@ const App = () => {
         };
     }, [isAuthReady, addSampleData, publicDataPath]); // 'db' is removed as it's a static object from outside the component
 
-// eslint-disable-next-line react-hooks/exhaustive-deps
     // Logic to update recommendations based on selected concerns and dynamic mappings
     useEffect(() => {
-        if (selectedConcerns.length === 0 && !currentCustomerConcern) {
+        // If a custom concern is active, recommendations are handled by handleGenerateRecommendationsForCustomer.
+        // This useEffect should only calculate for pre-defined concerns.
+        if (currentCustomerConcern) {
+            // If custom concern is active, the recommendations are already set by handleGenerateRecommendationsForCustomer.
+            // This useEffect should not recalculate or cause further updates based on these.
+            return;
+        }
+
+        // If no pre-defined concerns are selected, clear recommendations.
+        if (selectedConcerns.length === 0) {
             setRecommendedIngredients([]);
             setRecommendedProducts([]);
-            setCurrentCustomerConcern('');
             return;
         }
 
         const uniqueRecommendedIngredients = new Set();
-        // If custom concern is active, prioritize it for recommendations
-        if (currentCustomerConcern) {
-            recommendedIngredients.forEach(ing => uniqueRecommendedIngredients.add(ing.name)); // Assuming recommendedIngredients holds full objects
-        } else {
-            selectedConcerns.forEach(concernName => {
-                const mapping = concernIngredientMappings.find(m => m.concernName === concernName);
-                if (mapping && mapping.ingredientNames) {
-                    mapping.ingredientNames.forEach(ing => uniqueRecommendedIngredients.add(ing));
-                }
-            });
-        }
+        selectedConcerns.forEach(concernName => {
+            const mapping = concernIngredientMappings.find(m => m.concernName === concernName);
+            if (mapping && mapping.ingredientNames) {
+                mapping.ingredientNames.forEach(ing => uniqueRecommendedIngredients.add(ing));
+            }
+        });
 
         const filteredIngredients = ingredients.filter(ing => uniqueRecommendedIngredients.has(ing.name));
         setRecommendedIngredients(filteredIngredients);
@@ -399,8 +407,10 @@ const App = () => {
         );
         setRecommendedProducts(filteredProducts);
 
-    }, [selectedConcerns, ingredients, products, concernIngredientMappings, currentCustomerConcern]);   const handleConcernToggle = (concernName) => {
+    }, [selectedConcerns, ingredients, products, concernIngredientMappings, currentCustomerConcern]); // Removed recommendedIngredients from dependencies
 
+
+    const handleConcernToggle = (concernName) => {
         setSelectedConcerns(prevSelected =>
             prevSelected.includes(concernName)
                 ? prevSelected.filter(name => name !== concernName)
@@ -435,6 +445,110 @@ const App = () => {
         setConfirmMessage('');
         setConfirmShowCancel(true); // Added to dependency array
     }, [setShowConfirmModal, setConfirmAction, setConfirmMessage, setConfirmShowCancel]); // Added all setters to dependency array
+
+    // Handler for generating recommendations for customer view
+    const handleGenerateRecommendationsForCustomer = async (concernText) => {
+        if (!concernText.trim() && selectedConcerns.length === 0) {
+            showConfirmation("Please select a concern or enter your own.", null, false);
+            return;
+        }
+
+        setLoading(true);
+        setNewlyAddedAIIngredientIds([]); // Clear previous highlights
+        setRecommendedIngredients([]);
+        setRecommendedProducts([]);
+
+        let prompt = "";
+        let currentSource = "";
+
+        if (concernText.trim()) {
+            prompt = `Given the beauty concern: "${concernText.trim()}", what are the top 3-5 key skincare ingredients that would effectively address this? Provide only the ingredient names, separated by commas. Also, briefly describe what each ingredient does in a sentence or two. For example: "Ingredient1: Description1, Ingredient2: Description2".`;
+            currentSource = concernText.trim();
+        } else if (selectedConcerns.length > 0) {
+            prompt = `Given the beauty concerns: "${selectedConcerns.join(', ')}", what are the top 3-5 key skincare ingredients that would effectively address these? Provide only the ingredient names, separated by commas. Also, briefly describe what each ingredient does in a sentence or two. For example: "Ingredient1: Description1, Ingredient2: Description2".`;
+            currentSource = selectedConcerns.join(', ');
+        }
+
+        setCurrentCustomerConcern(currentSource); // Set the concern that recommendations are based on
+
+        try {
+            const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+            if (!apiKey) {
+                showConfirmation("Gemini API Key is not configured. Please contact support.", null, false);
+                setLoading(false);
+                return;
+            }
+
+            const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = { contents: chatHistory };
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                const text = result.candidates[0].content.parts[0].text;
+                console.log("Gemini Raw Response:", text); // Log raw Gemini response
+
+                // Parse the response to extract ingredients and descriptions
+                const parsedIngredients = text.split(', ').map(item => {
+                    const [name, description] = item.split(':').map(s => s.trim());
+                    return { name, description: description || '' };
+                });
+
+                // Identify and add new ingredients to Firestore
+                const existingIngredientNames = new Set(ingredients.map(ing => ing.name.toLowerCase()));
+                const newIngredientPromises = [];
+                const newlyAddedIds = [];
+
+                for (const aiIng of parsedIngredients) {
+                    if (!existingIngredientNames.has(aiIng.name.toLowerCase())) {
+                        newIngredientPromises.push(
+                            handleAddIngredient(aiIng.name, aiIng.description)
+                                .then(newDoc => {
+                                    if (newDoc) {
+                                        newlyAddedIds.push(newDoc.id);
+                                    }
+                                    return newDoc;
+                                })
+                        );
+                    }
+                }
+
+                await Promise.all(newIngredientPromises);
+                setNewlyAddedAIIngredientIds(newlyAddedIds); // Store IDs of newly added ingredients for highlighting
+
+                // Filter products based on ALL recommended ingredients (both existing and newly added)
+                const allRecommendedNames = new Set(ingredients.map(ing => ing.name)); // Start with existing
+                parsedIngredients.forEach(aiIng => allRecommendedNames.add(aiIng.name)); // Add AI suggested
+
+                const filteredProducts = products.filter(product =>
+                    product.targetIngredients && product.targetIngredients.some(prodIng =>
+                        allRecommendedNames.has(prodIng)
+                    )
+                );
+
+                // Set recommended ingredients (from AI) and products
+                setRecommendedIngredients(parsedIngredients.filter(ing => allRecommendedNames.has(ing.name)));
+                setRecommendedProducts(filteredProducts);
+
+            } else {
+                showConfirmation("No recommendations found. Please try a different concern.", null, false);
+            }
+        } catch (error) {
+            console.error("Error generating recommendations:", error);
+            showConfirmation("Failed to get recommendations. Please try again.", null, false);
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
     // --- Admin Functions ---
@@ -676,41 +790,23 @@ const App = () => {
         );
     };
 
-    // --- Mappings Functions ---
-    const handleAddUpdateMapping = async () => {
-        if (!selectedConcernForMapping) {
-            showConfirmation("Please select a concern for the mapping.", null, false);
+
+    // Mappings
+    const handleAddMapping = async () => {
+        if (selectedConcernForMapping.trim() === '' || selectedIngredientsForMapping.length === 0) {
+            showConfirmation("Please select a concern and at least one ingredient for mapping.", null, false);
             return;
         }
-        if (selectedIngredientsForMapping.length === 0) {
-            showConfirmation("Please select at least one ingredient for the mapping.", null, false);
-            return;
-        }
-
-        const mappingData = {
-            concernName: selectedConcernForMapping,
-            ingredientNames: selectedIngredientsForMapping,
-        };
-
         try {
-            if (editingMapping) {
-                await setDoc(doc(db, `${publicDataPath}/concernIngredientMappings`, editingMapping.id), mappingData);
-                setEditingMapping(null);
-            } else {
-                const existingMapping = concernIngredientMappings.find(m => m.concernName === selectedConcernForMapping);
-                if (existingMapping) {
-                    showConfirmation(`A mapping for "${selectedConcernForMapping}" already exists. Do you want to update it?`, async () => {
-                        await setDoc(doc(db, `${publicDataPath}/concernIngredientMappings`, existingMapping.id), mappingData);
-                        resetMappingForm();
-                    });
-                    return;
-                }
-                await addDoc(collection(db, `${publicDataPath}/concernIngredientMappings`), mappingData);
-            }
-            resetMappingForm();
+            await addDoc(collection(db, `${publicDataPath}/concernIngredientMappings`), {
+                concernName: selectedConcernForMapping.trim(),
+                ingredientNames: selectedIngredientsForMapping,
+            });
+            setSelectedConcernForMapping('');
+            setSelectedIngredientsForMapping([]);
         } catch (e) {
-            console.error("Error adding/updating mapping: ", e);
-            showConfirmation("Failed to add/update mapping. Please try again.", null, false);
+            console.error("Error adding mapping: ", e);
+            showConfirmation("Failed to add mapping. Please try again.", null, false);
         }
     };
 
@@ -720,12 +816,30 @@ const App = () => {
         setSelectedIngredientsForMapping(mapping.ingredientNames || []);
     };
 
+    const handleUpdateMapping = async () => {
+        if (!editingMapping || selectedConcernForMapping.trim() === '' || selectedIngredientsForMapping.length === 0) {
+            showConfirmation("Please select a concern and at least one ingredient for mapping.", null, false);
+            return;
+        }
+        try {
+            await setDoc(doc(db, `${publicDataPath}/concernIngredientMappings`, editingMapping.id), {
+                concernName: selectedConcernForMapping.trim(),
+                ingredientNames: selectedIngredientsForMapping,
+            });
+            setEditingMapping(null);
+            setSelectedConcernForMapping('');
+            setSelectedIngredientsForMapping([]);
+        } catch (e) {
+            console.error("Error updating mapping: ", e);
+            showConfirmation("Failed to update mapping. Please try again.", null, false);
+        }
+    };
+
     const handleDeleteMapping = (id) => {
         showConfirmation("Are you sure you want to delete this mapping?", async () => {
             try {
                 await deleteDoc(doc(db, `${publicDataPath}/concernIngredientMappings`, id));
-            }
-            catch (e) {
+            } catch (e) {
                 console.error("Error deleting mapping: ", e);
                 showConfirmation("Failed to delete mapping. Please try again.", null, false);
             }
@@ -751,7 +865,8 @@ const App = () => {
         );
     };
 
-    const handleMappingIngredientToggle = (ingredientName) => {
+    // New function for toggling ingredient selection for mappings
+    const handleIngredientToggleForMapping = (ingredientName) => {
         setSelectedIngredientsForMapping(prev =>
             prev.includes(ingredientName)
                 ? prev.filter(name => name !== ingredientName)
@@ -759,234 +874,776 @@ const App = () => {
         );
     };
 
-    const resetMappingForm = () => {
-        setSelectedConcernForMapping('');
-        setSelectedIngredientsForMapping([]);
-        setEditingMapping(null);
-    };
-
-    // --- Gemini API Integration (Unified for Admin and Customer) ---
-    const handleGenerateMappingWithAI = async (concernToGenerateFor, isCustomerInput = false) => {
-        const targetConcern = concernToGenerateFor || selectedConcernForMapping;
-
-        if (!targetConcern) {
-            showConfirmation("Please select or enter a beauty concern to generate ingredients.", null, false);
+    // NEW: Handle Fetch Products from Shopify
+    const handleFetchShopifyProducts = async () => {
+        if (!shopifyStoreDomain.trim()) {
+            showConfirmation("Please enter your Shopify store domain.", null, false);
+            return;
+        }
+        // In a real application, you would NOT expose API keys client-side.
+        // This is for demonstration purposes only.
+        if (!shopifyApiKey.trim()) {
+            showConfirmation("Please enter your Shopify API Key (for demonstration only).", null, false);
             return;
         }
 
-        setGeneratingMapping(true);
-        if (!isCustomerInput) {
-            setSelectedIngredientsForMapping([]); // Clear previous selections only for admin mapping
-        } else {
-            setRecommendedIngredients([]); // Clear previous customer recommendations
-            setRecommendedProducts([]);
-        }
-
-
+        setFetchingShopifyProducts(true);
         try {
-            const prompt = `For the beauty concern "${targetConcern}", list the top 10-15 most effective and common skincare ingredients, including those highly-rated based on global reviews and the latest modern scientifically-tested ingredients. Respond as a JSON array of strings, like ["Ingredient 1", "Ingredient 2"]. Do not include any other text.`;
-            console.log("Gemini API: Sending prompt:", prompt);
-            let chatHistory = [];
-            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            // --- SIMULATED MOCK DATA FETCH ---
+            // In a real app, you'd make a fetch call to your Shopify API proxy here.
+            // Example:
+            // const response = await fetch(`https://${shopifyStoreDomain}/admin/api/2023-07/products.json`, {
+            //     headers: {
+            //         'X-Shopify-Access-Token': shopifyApiKey,
+            //     },
+            // });
+            // const data = await response.json();
+            // const fetchedShopifyProducts = data.products.map(p => ({
+            //     id: `shopify_${p.id}`,
+            //     name: p.title,
+            //     description: p.body_html,
+            //     imageUrl: p.image ? p.image.src : '',
+            //     shopifyUrl: `https://${shopifyStoreDomain}/products/${p.handle}`,
+            //     targetIngredients: [], // You'd need a way to map Shopify product tags/metafields to ingredients
+            // }));
 
-            const payload = {
-                contents: chatHistory,
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "ARRAY",
-                        items: { "type": "STRING" }
-                    }
+            const mockShopifyProducts = [
+                { id: `shopify_prod_1_${Date.now()}`, name: 'Simulated Shopify Product A', description: 'A great product from your Shopify store.', imageUrl: 'https://placehold.co/100x100/ADD8E6/000000?text=Shopify+A', shopifyUrl: `https://${shopifyStoreDomain}/products/a`, targetIngredients: [] },
+                { id: `shopify_prod_2_${Date.now() + 1}`, name: 'Simulated Shopify Product B', description: 'Another fantastic Shopify item.', imageUrl: 'https://placehold.co/100x100/B0E0E6/000000?text=Shopify+B', shopifyUrl: `https://${shopifyStoreDomain}/products/b`, targetIngredients: [] },
+                { id: `shopify_prod_3_${Date.now() + 2}`, name: 'Simulated Shopify Product C', description: 'Your customers will love this.', imageUrl: 'https://placehold.co/100x100/87CEEB/000000?text=Shopify+C', shopifyUrl: `https://${shopifyStoreDomain}/products/c`, targetIngredients: [] },
+            ];
+
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+
+            // Add fetched products to Firestore
+            if (db) {
+                const productsColRef = collection(db, `${publicDataPath}/products`);
+                for (const prod of mockShopifyProducts) {
+                    const docRef = doc(productsColRef, prod.id);
+                    await setDoc(docRef, prod, { merge: true }); // Use merge to update if exists, add if new
                 }
-            };
-            const apiKey = process.env.REACT_APP_GEMINI_API_KEY || "";
-            if (!apiKey) {
-                console.error("Gemini API Key is missing. Please set REACT_APP_GEMINI_API_KEY in Netlify environment variables.");
-                showConfirmation("Gemini API Key is not configured. Please contact support.", null, false);
-                setGeneratingMapping(false);
-                return;
+                // Firestore listener will update the 'products' state automatically
             }
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            showConfirmation(`Successfully simulated fetching ${mockShopifyProducts.length} products from Shopify.`, null, false);
 
-            const result = await response.json();
-            console.log("Gemini API: Raw response result:", result);
-
-            if (response.ok) {
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const jsonString = result.candidates[0].content.parts[0].text;
-                    console.log("Gemini API: Parsed JSON string from response:", jsonString);
-                    try {
-                        const generatedIngredientNames = JSON.parse(jsonString);
-                        console.log("Gemini API: Generated ingredients array:", generatedIngredientNames);
-
-                        if (Array.isArray(generatedIngredientNames)) {
-                            const existingIngredientNamesSet = new Set(ingredients.map(ing => ing.name));
-                            const newIngredientsToPropose = generatedIngredientNames.filter(genIng =>
-                                !existingIngredientNamesSet.has(genIng)
-                            );
-
-                            const performCustomerRecommendationsAndPersistence = async (finalGeneratedNames) => {
-                                // Add the custom concern to the concerns collection if it doesn't exist
-                                const existingConcern = concerns.find(c => c.name === targetConcern);
-                                if (!existingConcern) {
-                                    try {
-                                        await addDoc(collection(db, `${publicDataPath}/concerns`), { name: targetConcern });
-                                        console.log(`Added new concern: ${targetConcern}`);
-                                    } catch (e) {
-                                        console.error("Error adding custom concern:", e);
-                                    }
-                                }
-
-                                // Create or update the mapping for the custom concern
-                                const existingMapping = concernIngredientMappings.find(m => m.concernName === targetConcern);
-                                const mappingData = {
-                                    concernName: targetConcern,
-                                    ingredientNames: finalGeneratedNames,
-                                };
-
-                                try {
-                                    if (existingMapping) {
-                                        await setDoc(doc(db, `${publicDataPath}/concernIngredientMappings`, existingMapping.id), mappingData);
-                                        console.log(`Updated mapping for custom concern: ${targetConcern}`);
-                                    } else {
-                                        await addDoc(collection(db, `${publicDataPath}/concernIngredientMappings`), mappingData);
-                                        console.log(`Created new mapping for custom concern: ${targetConcern}`);
-                                    }
-                                } catch (e) {
-                                    console.error("Error adding/updating mapping for custom concern:", e);
-                                }
-
-                                // Set recommended ingredients for customer display (full objects)
-                                const allRelevantIngredientObjects = ingredients.filter(ing => finalGeneratedNames.includes(ing.name));
-                                setRecommendedIngredients(allRelevantIngredientObjects);
-                                setCurrentCustomerConcern(targetConcern);
-                            };
-
-
-                            if (newIngredientsToPropose.length > 0) {
-                                const message = `The AI suggested new ingredients not in your list: ${newIngredientsToPropose.join(', ')}. Do you want to add them?`;
-                                showConfirmation(message, async () => {
-                                    let newlyAddedObjects = [];
-                                    for (const newIngName of newIngredientsToPropose) {
-                                        const newIngredientObj = await handleAddIngredient(newIngName, 'AI suggested ingredient.');
-                                        if (newIngredientObj) {
-                                            newlyAddedObjects.push(newIngredientObj);
-                                        }
-                                    }
-
-                                    // Optimistically update the ingredients state
-                                    setIngredients(prevIngredients => [...prevIngredients, ...newlyAddedObjects]);
-                                    setNewlyAddedAIIngredientIds(newlyAddedObjects.map(ing => ing.id));
-
-                                    if (!isCustomerInput) {
-                                        // For admin: update selected ingredients for mapping
-                                        const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredientNames])];
-                                        setSelectedIngredientsForMapping(allSelected);
-                                    } else {
-                                        // For customer: perform all steps (add concern, add mapping, set recommendations)
-                                        await performCustomerRecommendationsAndPersistence(generatedIngredientNames);
-                                    }
-                                });
-                            } else {
-                                // All generated ingredients already exist or none were new
-                                if (!isCustomerInput) {
-                                    const allSelected = [...new Set([...selectedIngredientsForMapping, ...generatedIngredientNames])];
-                                    setSelectedIngredientsForMapping(allSelected);
-                                    showConfirmation("AI generated ingredients and they are all in your existing list.", null, false);
-                                } else {
-                                    // For customer: perform all steps (add concern, add mapping, set recommendations)
-                                    await performCustomerRecommendationsAndPersistence(generatedIngredientNames);
-                                    showConfirmation("AI generated ingredients and they are all in your existing list.", null, false); // Keep the confirmation for existing
-                                }
-                            }
-
-                        } else {
-                            console.error("Gemini response was not a JSON array:", jsonString);
-                            showConfirmation("Failed to parse AI response. Invalid JSON format.", null, false);
-                        }
-                    } catch (parseError) {
-                        console.error("Error parsing AI response JSON:", parseError, jsonString);
-                        showConfirmation("Failed to process AI response. Invalid JSON format.", null, false);
-                    }
-                } else {
-                    console.error("Gemini API response structure unexpected or missing content:", result);
-                    showConfirmation("AI could not generate recommendations. Please try again. Response was empty or malformed.", null, false);
-                }
-            } else {
-                console.error(`Gemini API request failed with status ${response.status}:`, result);
-                showConfirmation(`AI service error: ${response.status}. Please check your API key and billing.`, null, false);
-            }
         } catch (error) {
-            console.error("Error calling Gemini API:", error);
-            showConfirmation("Error connecting to AI service. Please check your network or try again later.", null, false);
+            console.error("Error fetching Shopify products:", error);
+            showConfirmation("Failed to fetch products from Shopify. Check your domain and API key.", null, false);
         } finally {
-            setGeneratingMapping(false);
+            setFetchingShopifyProducts(false);
         }
     };
 
-    const handleGenerateRecommendationsForCustomer = async () => {
-        if (customConcernInput.trim() === '') {
-            showConfirmation("Please enter a concern to get recommendations.", null, false);
-            return;
-        }
-        setSelectedConcerns([]); // Clear any pre-selected concerns
-        setCurrentCustomerConcern(customConcernInput.trim()); // Set the current customer concern for display
-        await handleGenerateMappingWithAI(customConcernInput.trim(), true); // Pass true for isCustomerInput
-    };
-
-
-    // Effect to clear newly added AI ingredient highlights after a delay
-    useEffect(() => {
-        if (newlyAddedAIIngredientIds.length > 0) {
-            const timer = setTimeout(() => {
-                setNewlyAddedAIIngredientIds([]);
-            }, 5000); // Highlight for 5 seconds
-            return () => clearTimeout(timer);
-        }
-    }, [newlyAddedAIIngredientIds]);
-
-
-    // Filtered lists for rendering in Admin Panel
-    const filteredConcerns = concerns.filter(concern =>
-        concern.name.toLowerCase().includes(concernFilter.toLowerCase())
-    );
-
-    const filteredIngredients = ingredients.filter(ingredient =>
-        ingredient.name.toLowerCase().includes(ingredientFilter.toLowerCase()) ||
-        ingredient.description.toLowerCase().includes(ingredientFilter.toLowerCase())
-    );
-
-    const filteredProducts = products.filter(product =>
-        product.name.toLowerCase().includes(productFilter.toLowerCase()) ||
-        product.description.toLowerCase().includes(productFilter.toLowerCase()) ||
-        (product.targetIngredients && product.targetIngredients.some(ing => ing.toLowerCase().includes(productFilter.toLowerCase())))
-    );
-
-    const filteredMappings = concernIngredientMappings.filter(mapping =>
-        mapping.concernName.toLowerCase().includes(mappingFilter.toLowerCase()) ||
-        (mapping.ingredientNames && mapping.ingredientNames.some(ing => ing.toLowerCase().includes(mappingFilter.toLowerCase())))
-    );
-
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <div className="text-lg font-semibold text-gray-700">Loading your beauty concerns...</div>
-            </div>
-        );
-    }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100 p-4 sm:p-6 font-inter text-gray-800">
-            {/* Render ConfirmationModal using a Portal */}
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 font-inter text-gray-800 flex flex-col items-center p-4 sm:p-6">
+            {/* User ID Display */}
+            {userId && (
+                <div className="w-full max-w-4xl bg-white p-3 rounded-lg shadow-sm mb-4 text-center text-sm text-gray-600 border border-gray-200">
+                    User ID: <span className="font-mono text-purple-600">{userId}</span>
+                </div>
+            )}
+
+            {/* Tab Navigation - Only visible if userRole is 'admin' */}
+            {userRole === 'admin' && (
+                <div className="w-full max-w-4xl bg-white p-2 rounded-lg shadow-md mb-6 flex justify-center space-x-4 border border-gray-200">
+                    <button
+                        onClick={() => setActiveTab('customer')}
+                        className={`px-6 py-2 rounded-md font-semibold transition-all duration-200 ${
+                            activeTab === 'customer'
+                                ? 'bg-purple-600 text-white shadow-lg'
+                                : 'bg-gray-100 text-gray-700 hover:bg-purple-100'
+                        }`}
+                    >
+                        Customer View
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('admin')}
+                        className={`px-6 py-2 rounded-md font-semibold transition-all duration-200 ${
+                            activeTab === 'admin'
+                                ? 'bg-purple-600 text-white shadow-lg'
+                                : 'bg-gray-100 text-gray-700 hover:bg-purple-100'
+                        }`}
+                    >
+                        Admin View
+                    </button>
+                </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="w-full max-w-4xl bg-white p-6 rounded-xl shadow-2xl border border-gray-200">
+                {loading ? (
+                    <div className="text-center py-10 text-lg text-purple-600">Loading application data...</div>
+                ) : (
+                    <>
+                        {/* Customer View Content */}
+                        {activeTab === 'customer' && (
+                            <div className="space-y-8">
+                                <h2 className="text-3xl font-bold text-purple-700 mb-6 text-center">Personalized Beauty Recommendations</h2>
+
+                                {/* Pre-defined Concerns */}
+                                <div className="mb-8 p-4 bg-purple-50 rounded-lg border border-purple-100 shadow-inner">
+                                    <h3 className="text-xl font-semibold text-purple-600 mb-4">Select Your Concerns:</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                        {concerns.filter(c => c.name.toLowerCase().includes(concernFilter.toLowerCase()))
+                                            .map(concern => (
+                                                <button
+                                                    key={concern.id}
+                                                    onClick={() => handleConcernToggle(concern.name)}
+                                                    className={`flex items-center justify-center px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base ${
+                                                        selectedConcerns.includes(concern.name)
+                                                            ? 'bg-purple-600 text-white border-purple-700 shadow-md transform scale-105'
+                                                            : 'bg-white text-gray-700 border-gray-300 hover:border-purple-300 hover:shadow-sm'
+                                                    }`}
+                                                >
+                                                    {selectedConcerns.includes(concern.name) && <CheckCircle className="w-5 h-5 mr-2" />}
+                                                    {concern.name}
+                                                </button>
+                                            ))}
+                                    </div>
+                                </div>
+
+                                {/* Custom Concern Input */}
+                                <div className="mb-8 p-4 bg-pink-50 rounded-lg border border-pink-100 shadow-inner">
+                                    <h3 className="text-xl font-semibold text-pink-600 mb-4">Or Enter Your Own Concern:</h3>
+                                    <div className="flex flex-col sm:flex-row gap-4">
+                                        <input
+                                            type="text"
+                                            value={customConcernInput}
+                                            onChange={(e) => {
+                                                setCustomConcernInput(e.target.value);
+                                                setSelectedConcerns([]); // Clear pre-defined selections when typing custom
+                                                setCurrentCustomerConcern(''); // Clear current source when typing
+                                            }}
+                                            placeholder="e.g., 'Dullness and uneven texture'"
+                                            className="flex-grow px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all duration-200"
+                                        />
+                                        <button
+                                            onClick={() => handleGenerateRecommendationsForCustomer(customConcernInput)}
+                                            className="px-6 py-3 bg-pink-500 text-white font-semibold rounded-lg shadow-md hover:bg-pink-600 transition-colors flex items-center justify-center whitespace-nowrap"
+                                        >
+                                            <Sparkles className="w-5 h-5 mr-2" /> Get Recommendations
+                                        </button>
+                                    </div>
+                                </div>
+
+
+                                {/* Recommendations Display */}
+                                {(recommendedIngredients.length > 0 || recommendedProducts.length > 0) && (
+                                    <div className="p-6 bg-yellow-50 rounded-lg border border-yellow-200 shadow-lg">
+                                        <h3 className="text-2xl font-bold text-yellow-800 mb-6 text-center">
+                                            Recommendations for {currentCustomerConcern || selectedConcerns.join(', ')}
+                                        </h3>
+
+                                        {recommendedIngredients.length > 0 && (
+                                            <div className="mb-8">
+                                                <h4 className="text-xl font-semibold text-yellow-800 mb-4 flex items-center">
+                                                    <Brain className="w-6 h-6 mr-2" /> Recommended Ingredients:
+                                                </h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    {recommendedIngredients.map(ingredient => (
+                                                        <div
+                                                            key={ingredient.id}
+                                                            className={`p-4 rounded-lg border-2 ${
+                                                                newlyAddedAIIngredientIds.includes(ingredient.id)
+                                                                    ? 'bg-blue-100 border-blue-600 animate-pulse' // Highlight new AI ingredients
+                                                                    : 'bg-white border-yellow-200'
+                                                            } shadow-sm`}
+                                                        >
+                                                            <h5 className="font-bold text-lg text-gray-800">{ingredient.name}</h5>
+                                                            <p className="text-gray-600 text-sm mt-1">{ingredient.description}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {recommendedProducts.length > 0 && (
+                                            <div>
+                                                <h4 className="text-xl font-semibold text-yellow-800 mb-4 flex items-center">
+                                                    <Link className="w-6 h-6 mr-2" /> Recommended Products:
+                                                </h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    {recommendedProducts.map(product => (
+                                                        <div key={product.id} className="p-4 bg-white rounded-lg border border-yellow-200 shadow-sm flex items-center space-x-4">
+                                                            <img
+                                                                src={product.imageUrl || `https://placehold.co/100x100/ADD8E6/000000?text=${product.name}`}
+                                                                alt={product.name}
+                                                                className="w-20 h-20 rounded-md object-cover border border-gray-200"
+                                                                onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/100x100/CCCCCC/000000?text=Image+Error`; }}
+                                                            />
+                                                            <div className="flex-grow">
+                                                                <h5 className="font-bold text-lg text-gray-800">{product.name}</h5>
+                                                                <p className="text-gray-600 text-sm mt-1">{product.description}</p>
+                                                                {product.targetIngredients && product.targetIngredients.length > 0 && (
+                                                                    <p className="text-gray-500 text-xs mt-1">Key Ingredients: {product.targetIngredients.join(', ')}</p>
+                                                                )}
+                                                                {product.shopifyUrl && (
+                                                                    <a
+                                                                        href={product.shopifyUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="inline-flex items-center text-purple-600 hover:text-purple-700 text-sm mt-2 font-semibold"
+                                                                    >
+                                                                        View Product <Link className="w-4 h-4 ml-1" />
+                                                                    </a>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Admin View Content - Only visible if activeTab is 'admin' */}
+                        {activeTab === 'admin' && (
+                            <div className="space-y-8">
+                                <h2 className="text-3xl font-bold text-purple-700 mb-6 text-center">Admin Dashboard</h2>
+
+                                {/* Admin Sub-Tabs */}
+                                <div className="w-full bg-gray-100 p-2 rounded-lg shadow-inner mb-6 flex justify-center space-x-4 border border-gray-200">
+                                    <button
+                                        onClick={() => setAdminSubTab('concerns')}
+                                        className={`px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
+                                            adminSubTab === 'concerns'
+                                                ? 'bg-purple-600 text-white shadow-md'
+                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                                        }`}
+                                    >
+                                        Concerns
+                                    </button>
+                                    <button
+                                        onClick={() => setAdminSubTab('ingredients')}
+                                        className={`px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
+                                            adminSubTab === 'ingredients'
+                                                ? 'bg-purple-600 text-white shadow-md'
+                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                                        }`}
+                                    >
+                                        Ingredients
+                                    </button>
+                                    <button
+                                        onClick={() => setAdminSubTab('products')}
+                                        className={`px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
+                                            adminSubTab === 'products'
+                                                ? 'bg-purple-600 text-white shadow-md'
+                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                                        }`}
+                                    >
+                                        Products
+                                    </button>
+                                    <button
+                                        onClick={() => setAdminSubTab('mappings')}
+                                        className={`px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
+                                            adminSubTab === 'mappings'
+                                                ? 'bg-purple-600 text-white shadow-md'
+                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                                        }`}
+                                    >
+                                        Mappings
+                                    </button>
+                                </div>
+
+                                {/* Admin Sub-Tab Content */}
+                                {adminSubTab === 'concerns' && (
+                                    <div className="space-y-6">
+                                        <h3 className="text-2xl font-bold text-purple-600 mb-4">Manage Concerns</h3>
+                                        {/* Add Concern Form */}
+                                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-100 shadow-inner">
+                                            <h4 className="text-lg font-semibold text-purple-700 mb-3">{editingConcern ? 'Edit Concern' : 'Add New Concern'}</h4>
+                                            <div className="flex flex-col sm:flex-row gap-3 items-end">
+                                                <input
+                                                    type="text"
+                                                    value={newConcernName}
+                                                    onChange={(e) => setNewConcernName(e.target.value)}
+                                                    placeholder="Enter concern name"
+                                                    className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                />
+                                                <button
+                                                    onClick={editingConcern ? handleUpdateConcern : handleAddConcern}
+                                                    className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                >
+                                                    {editingConcern ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
+                                                    {editingConcern ? 'Update Concern' : 'Add Concern'}
+                                                </button>
+                                                {editingConcern && (
+                                                    <button
+                                                        onClick={() => { setEditingConcern(null); setNewConcernName(''); }}
+                                                        className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                    >
+                                                        <X className="w-5 h-5 mr-2" /> Cancel
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Concern List */}
+                                        <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-md">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h4 className="text-lg font-semibold text-gray-800">Existing Concerns ({concerns.length})</h4>
+                                                <input
+                                                    type="text"
+                                                    value={concernFilter}
+                                                    onChange={(e) => setConcernFilter(e.target.value)}
+                                                    placeholder="Filter concerns..."
+                                                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-purple-500 outline-none"
+                                                />
+                                            </div>
+                                            {selectedConcernIds.length > 0 && (
+                                                <button
+                                                    onClick={handleDeleteSelectedConcerns}
+                                                    className="mb-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-sm"
+                                                >
+                                                    <Trash2 className="w-4 h-4 mr-2" /> Delete Selected ({selectedConcernIds.length})
+                                                </button>
+                                            )}
+                                            <ul className="space-y-2">
+                                                {concerns
+                                                    .filter(c => c.name.toLowerCase().includes(concernFilter.toLowerCase()))
+                                                    .map(concern => (
+                                                        <li key={concern.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 shadow-sm">
+                                                            <div className="flex items-center">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedConcernIds.includes(concern.id)}
+                                                                    onChange={() => handleToggleSelectConcern(concern.id)}
+                                                                    className="mr-3 h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                                />
+                                                                <span className="font-medium text-gray-700">{concern.name}</span>
+                                                            </div>
+                                                            <div className="flex space-x-2">
+                                                                <button onClick={() => handleEditConcern(concern)} className="text-blue-600 hover:text-blue-800 transition-colors">
+                                                                    <Edit className="w-5 h-5" />
+                                                                </button>
+                                                                <button onClick={() => showConfirmation("Are you sure you want to delete this concern?", () => handleDeleteConcern(concern.id))} className="text-red-600 hover:text-red-800 transition-colors">
+                                                                    <Trash2 className="w-5 h-5" />
+                                                                </button>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                            </ul>
+                                            {concerns.length === 0 && <p className="text-center text-gray-500 py-4">No concerns added yet.</p>}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {adminSubTab === 'ingredients' && (
+                                    <div className="space-y-6">
+                                        <h3 className="text-2xl font-bold text-purple-600 mb-4">Manage Ingredients</h3>
+                                        {/* Add Ingredient Form */}
+                                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-100 shadow-inner">
+                                            <h4 className="text-lg font-semibold text-purple-700 mb-3">{editingIngredient ? 'Edit Ingredient' : 'Add New Ingredient'}</h4>
+                                            <div className="flex flex-col gap-3">
+                                                <input
+                                                    type="text"
+                                                    value={newIngredientName}
+                                                    onChange={(e) => setNewIngredientName(e.target.value)}
+                                                    placeholder="Ingredient Name"
+                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                />
+                                                <textarea
+                                                    value={newIngredientDescription}
+                                                    onChange={(e) => setNewIngredientDescription(e.target.value)}
+                                                    placeholder="Ingredient Description"
+                                                    rows="3"
+                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                ></textarea>
+                                                <div className="flex gap-3 justify-end">
+                                                    <button
+                                                        onClick={editingIngredient ? handleUpdateIngredient : () => handleAddIngredient(newIngredientName, newIngredientDescription)}
+                                                        className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                    >
+                                                        {editingIngredient ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
+                                                        {editingIngredient ? 'Update Ingredient' : 'Add Ingredient'}
+                                                    </button>
+                                                    {editingIngredient && (
+                                                        <button
+                                                            onClick={() => { setEditingIngredient(null); setNewIngredientName(''); setNewIngredientDescription(''); }}
+                                                            className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                        >
+                                                            <X className="w-5 h-5 mr-2" /> Cancel
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Ingredient List */}
+                                        <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-md">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h4 className="text-lg font-semibold text-gray-800">Existing Ingredients ({ingredients.length})</h4>
+                                                <input
+                                                    type="text"
+                                                    value={ingredientFilter}
+                                                    onChange={(e) => setIngredientFilter(e.target.value)}
+                                                    placeholder="Filter ingredients..."
+                                                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-purple-500 outline-none"
+                                                />
+                                            </div>
+                                            {selectedIngredientIds.length > 0 && (
+                                                <button
+                                                    onClick={handleDeleteSelectedIngredients}
+                                                    className="mb-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-sm"
+                                                >
+                                                    <Trash2 className="w-4 h-4 mr-2" /> Delete Selected ({selectedIngredientIds.length})
+                                                </button>
+                                            )}
+                                            <ul className="space-y-2">
+                                                {ingredients
+                                                    .filter(i => i.name.toLowerCase().includes(ingredientFilter.toLowerCase()))
+                                                    .map(ingredient => (
+                                                        <li key={ingredient.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 shadow-sm">
+                                                            <div className="flex items-center">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedIngredientIds.includes(ingredient.id)}
+                                                                    onChange={() => handleToggleSelectIngredient(ingredient.id)}
+                                                                    className="mr-3 h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                                />
+                                                                <div>
+                                                                    <span className="font-medium text-gray-700">{ingredient.name}</span>
+                                                                    {ingredient.description && <p className="text-gray-500 text-sm">{ingredient.description}</p>}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex space-x-2">
+                                                                <button onClick={() => handleEditIngredient(ingredient)} className="text-blue-600 hover:text-blue-800 transition-colors">
+                                                                    <Edit className="w-5 h-5" />
+                                                                </button>
+                                                                <button onClick={() => handleDeleteIngredient(ingredient.id)} className="text-red-600 hover:text-red-800 transition-colors">
+                                                                    <Trash2 className="w-5 h-5" />
+                                                                </button>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                            </ul>
+                                            {ingredients.length === 0 && <p className="text-center text-gray-500 py-4">No ingredients added yet.</p>}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {adminSubTab === 'products' && (
+                                    <div className="space-y-6">
+                                        <h3 className="text-2xl font-bold text-purple-600 mb-4">Manage Products</h3>
+                                        {/* NEW: Shopify Integration Section */}
+                                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 shadow-inner">
+                                            <h4 className="text-lg font-semibold text-blue-700 mb-3">Fetch Products from Shopify</h4>
+                                            <p className="text-sm text-gray-600 mb-4">
+                                                Enter your Shopify store domain and a **Storefront Access Token** (for client-side fetching) to import products.
+                                                <br />
+                                                <span className="font-bold text-red-600">Warning:</span> Exposing API keys client-side is NOT secure for production. Use a backend for real integration.
+                                            </p>
+                                            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                                                <input
+                                                    type="text"
+                                                    value={shopifyStoreDomain}
+                                                    onChange={(e) => setShopifyStoreDomain(e.target.value)}
+                                                    placeholder="your-store-name.myshopify.com"
+                                                    className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                                                />
+                                                <input
+                                                    type="password" // Use type="password" for API keys
+                                                    value={shopifyApiKey}
+                                                    onChange={(e) => setShopifyApiKey(e.target.value)}
+                                                    placeholder="Shopify Storefront Access Token"
+                                                    className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                                                />
+                                                <button
+                                                    onClick={handleFetchShopifyProducts}
+                                                    disabled={fetchingShopifyProducts}
+                                                    className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {fetchingShopifyProducts ? (
+                                                        <span className="flex items-center">
+                                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                            </svg>
+                                                            Fetching...
+                                                        </span>
+                                                    ) : (
+                                                        <>
+                                                            <Download className="w-5 h-5 mr-2" /> Fetch Products
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Add Product Form */}
+                                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-100 shadow-inner">
+                                            <h4 className="text-lg font-semibold text-purple-700 mb-3">{editingProduct ? 'Edit Product' : 'Add New Product'}</h4>
+                                            <div className="flex flex-col gap-3">
+                                                <input
+                                                    type="text"
+                                                    value={newProductName}
+                                                    onChange={(e) => setNewProductName(e.target.value)}
+                                                    placeholder="Product Name"
+                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                />
+                                                <textarea
+                                                    value={newProductDescription}
+                                                    onChange={(e) => setNewProductDescription(e.target.value)}
+                                                    placeholder="Product Description"
+                                                    rows="3"
+                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                ></textarea>
+                                                <input
+                                                    type="text"
+                                                    value={newProductImageUrl}
+                                                    onChange={(e) => setNewProductImageUrl(e.target.value)}
+                                                    placeholder="Image URL (e.g., https://placehold.co/100x100)"
+                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={newProductShopifyUrl}
+                                                    onChange={(e) => setNewProductShopifyUrl(e.target.value)}
+                                                    placeholder="Shopify Product URL"
+                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                                />
+                                                {/* Ingredient Multi-Select for Products */}
+                                                <div className="relative">
+                                                    <label className="block text-gray-700 text-sm font-bold mb-2">Target Ingredients:</label>
+                                                    <div className="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-md bg-white">
+                                                        {ingredients.map(ingredient => (
+                                                            <button
+                                                                key={ingredient.id}
+                                                                onClick={() => handleIngredientSelection(ingredient.name)}
+                                                                className={`px-3 py-1 rounded-full text-sm transition-colors duration-200 ${
+                                                                    newProductTargetIngredients.includes(ingredient.name)
+                                                                        ? 'bg-purple-200 text-purple-800'
+                                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                }`}
+                                                            >
+                                                                {ingredient.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex gap-3 justify-end">
+                                                    <button
+                                                        onClick={editingProduct ? handleUpdateProduct : handleAddProduct}
+                                                        className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                    >
+                                                        {editingProduct ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
+                                                        {editingProduct ? 'Update Product' : 'Add Product'}
+                                                    </button>
+                                                    {editingProduct && (
+                                                        <button
+                                                            onClick={() => { setEditingProduct(null); setNewProductName(''); setNewProductDescription(''); setNewProductImageUrl(''); setNewProductShopifyUrl(''); setNewProductTargetIngredients([]); }}
+                                                            className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                        >
+                                                            <X className="w-5 h-5 mr-2" /> Cancel
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Product List */}
+                                        <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-md">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h4 className="text-lg font-semibold text-gray-800">Existing Products ({products.length})</h4>
+                                                <input
+                                                    type="text"
+                                                    value={productFilter}
+                                                    onChange={(e) => setProductFilter(e.target.value)}
+                                                    placeholder="Filter products..."
+                                                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-purple-500 outline-none"
+                                                />
+                                            </div>
+                                            {selectedProductIds.length > 0 && (
+                                                <button
+                                                    onClick={handleDeleteSelectedProducts}
+                                                    className="mb-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-sm"
+                                                >
+                                                    <Trash2 className="w-4 h-4 mr-2" /> Delete Selected ({selectedProductIds.length})
+                                                </button>
+                                            )}
+                                            <ul className="space-y-2">
+                                                {products
+                                                    .filter(p => p.name.toLowerCase().includes(productFilter.toLowerCase()))
+                                                    .map(product => (
+                                                        <li key={product.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 shadow-sm">
+                                                            <div className="flex items-center">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedProductIds.includes(product.id)}
+                                                                    onChange={() => handleToggleSelectProduct(product.id)}
+                                                                    className="mr-3 h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                                />
+                                                                <img
+                                                                    src={product.imageUrl || `https://placehold.co/50x50/ADD8E6/000000?text=Prod`}
+                                                                    alt={product.name}
+                                                                    className="w-12 h-12 rounded-md object-cover mr-3 border border-gray-200"
+                                                                    onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/50x50/CCCCCC/000000?text=Error`; }}
+                                                                />
+                                                                <div>
+                                                                    <span className="font-medium text-gray-700">{product.name}</span>
+                                                                    {product.description && <p className="text-gray-500 text-sm truncate w-48">{product.description}</p>}
+                                                                    {product.targetIngredients && product.targetIngredients.length > 0 && (
+                                                                        <p className="text-gray-500 text-xs mt-1">Key: {product.targetIngredients.join(', ')}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex space-x-2">
+                                                                <button onClick={() => handleEditProduct(product)} className="text-blue-600 hover:text-blue-800 transition-colors">
+                                                                    <Edit className="w-5 h-5" />
+                                                                </button>
+                                                                <button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-800 transition-colors">
+                                                                    <Trash2 className="w-5 h-5" />
+                                                                </button>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                            </ul>
+                                            {products.length === 0 && <p className="text-center text-gray-500 py-4">No products added yet.</p>}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {adminSubTab === 'mappings' && (
+                                    <div className="space-y-6">
+                                        <h3 className="text-2xl font-bold text-purple-600 mb-4">Manage Concern-Ingredient Mappings</h3>
+                                        {/* Add/Edit Mapping Form */}
+                                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-100 shadow-inner">
+                                            <h4 className="text-lg font-semibold text-purple-700 mb-3">{editingMapping ? 'Edit Mapping' : 'Add New Mapping'}</h4>
+                                            <div className="flex flex-col gap-3">
+                                                <select
+                                                    value={selectedConcernForMapping}
+                                                    onChange={(e) => setSelectedConcernForMapping(e.target.value)}
+                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                >
+                                                    <option value="">Select Concern</option>
+                                                    {concerns.map(concern => (
+                                                        <option key={concern.id} value={concern.name}>{concern.name}</option>
+                                                    ))}
+                                                </select>
+                                                <div className="relative">
+                                                    <label className="block text-gray-700 text-sm font-bold mb-2">Select Ingredients:</label>
+                                                    <div className="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-md bg-white">
+                                                        {ingredients.map(ingredient => (
+                                                            <button
+                                                                key={ingredient.id}
+                                                                onClick={() => handleIngredientToggleForMapping(ingredient.name)}
+                                                                className={`px-3 py-1 rounded-full text-sm transition-colors duration-200 ${
+                                                                    selectedIngredientsForMapping.includes(ingredient.name)
+                                                                        ? 'bg-pink-200 text-pink-800'
+                                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                }`}
+                                                            >
+                                                                {ingredient.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-3 justify-end">
+                                                    <button
+                                                        onClick={editingMapping ? handleUpdateMapping : handleAddMapping}
+                                                        className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                    >
+                                                        {editingMapping ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
+                                                        {editingMapping ? 'Update Mapping' : 'Add Mapping'}
+                                                    </button>
+                                                    {editingMapping && (
+                                                        <button
+                                                            onClick={() => { setEditingMapping(null); setSelectedConcernForMapping(''); setSelectedIngredientsForMapping([]); }}
+                                                            className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                        >
+                                                            <X className="w-5 h-5 mr-2" /> Cancel
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Mapping List */}
+                                        <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-md">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h4 className="text-lg font-semibold text-gray-800">Existing Mappings ({concernIngredientMappings.length})</h4>
+                                                <input
+                                                    type="text"
+                                                    value={mappingFilter}
+                                                    onChange={(e) => setMappingFilter(e.target.value)}
+                                                    placeholder="Filter mappings..."
+                                                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-purple-500 outline-none"
+                                                />
+                                            </div>
+                                            {selectedMappingIds.length > 0 && (
+                                                <button
+                                                    onClick={handleDeleteSelectedMappings}
+                                                    className="mb-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-sm"
+                                                >
+                                                    <Trash2 className="w-4 h-4 mr-2" /> Delete Selected ({selectedMappingIds.length})
+                                                </button>
+                                            )}
+                                            <ul className="space-y-2">
+                                                {concernIngredientMappings
+                                                    .filter(m => m.concernName.toLowerCase().includes(mappingFilter.toLowerCase()) ||
+                                                        (m.ingredientNames && m.ingredientNames.some(ing => ing.toLowerCase().includes(mappingFilter.toLowerCase()))))
+                                                    .map(mapping => (
+                                                        <li key={mapping.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 shadow-sm">
+                                                            <div className="flex items-center">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedMappingIds.includes(mapping.id)}
+                                                                    onChange={() => handleToggleSelectMapping(mapping.id)}
+                                                                    className="mr-3 h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                                />
+                                                                <div>
+                                                                    <span className="font-medium text-gray-700">{mapping.concernName}</span>
+                                                                    {mapping.ingredientNames && mapping.ingredientNames.length > 0 && (
+                                                                        <p className="text-gray-500 text-sm">Ingredients: {mapping.ingredientNames.join(', ')}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex space-x-2">
+                                                                <button onClick={() => handleEditMapping(mapping)} className="text-blue-600 hover:text-blue-800 transition-colors">
+                                                                    <Edit className="w-5 h-5" />
+                                                                </button>
+                                                                <button onClick={() => handleDeleteMapping(mapping.id)} className="text-red-600 hover:text-red-800 transition-colors">
+                                                                    <Trash2 className="w-5 h-5" />
+                                                                </button>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                            </ul>
+                                            {concernIngredientMappings.length === 0 && <p className="text-center text-gray-500 py-4">No mappings added yet.</p>}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+
+            {/* Admin Login/Logout Button (for development/testing) */}
+            <div className="mt-8 text-center">
+                {userRole === 'customer' ? (
+                    <button
+                        onClick={() => setUserRole('admin')}
+                        className="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition-colors"
+                    >
+                        Switch to Admin View (Dev Mode)
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => { setUserRole('customer'); setActiveTab('customer'); }}
+                        className="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition-colors"
+                    >
+                        Switch to Customer View
+                    </button>
+                )}
+            </div>
+
+            {/* Confirmation Modal Portal */}
             {showConfirmModal && ReactDOM.createPortal(
                 <ConfirmationModal
                     message={confirmMessage}
@@ -994,778 +1651,10 @@ const App = () => {
                     onCancel={handleCancelConfirm}
                     showCancel={confirmShowCancel}
                 />,
-                document.body // Render directly into the document body
+                document.body
             )}
+        </div>
+    );
+};
 
-            <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-8">
-                {/* Role Selector */}
-                <div className="flex justify-center items-center gap-4 mb-6 p-3 bg-gray-50 rounded-lg shadow-sm">
-                    <span className="font-semibold text-gray-700">Select Role:</span>
-                    <label className="inline-flex items-center">
-                        <input
-                            type="radio"
-                            className="form-radio text-purple-600 h-5 w-5"
-                            name="role"
-                            value="customer"
-                            checked={userRole === 'customer'}
-                            onChange={() => setUserRole('customer')}
-                        />
-                        <span className="ml-2 text-gray-800">Customer</span>
-                    </label>
-                    <label className="inline-flex items-center">
-                        <input
-                            type="radio"
-                            className="form-radio text-purple-600 h-5 w-5"
-                            name="role"
-                            value="admin"
-                            checked={userRole === 'admin'}
-                            onChange={() => setUserRole('admin')}
-                        />
-                        <span className="ml-2 text-gray-800">Admin</span>
-                    </label>
-                </div>
-
-                <div className="flex justify-center mb-6 border-b border-gray-200">
-                    <button
-                        onClick={() => setActiveTab('customer')}
-                        className={`px-6 py-3 text-lg font-medium rounded-t-lg transition-colors duration-200
-                            ${activeTab === 'customer' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-600 hover:text-purple-700 hover:bg-gray-50'}`}
-                    >
-                        <Sparkles className="inline-block w-5 h-5 mr-2" /> Customer View
-                    </button>
-                    {userRole === 'admin' && ( // Conditionally render Admin tab
-                        <button
-                            onClick={() => setActiveTab('admin')}
-                            className={`px-6 py-3 text-lg font-medium rounded-t-lg transition-colors duration-200
-                                ${activeTab === 'admin' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-600 hover:text-purple-700 hover:bg-gray-50'}`}
-                        >
-                            <Settings className="inline-block w-5 h-5 mr-2" /> Admin Panel
-                        </button>
-                    )}
-                </div>
-
-                {userId && (
-                    <p className="text-sm text-center text-gray-500 mb-4">
-                        Your User ID: <span className="font-mono bg-gray-100 px-2 py-1 rounded-md text-xs">{userId}</span>
-                    </p>
-                )}
-
-                {activeTab === 'customer' && (
-                    <>
-                        <h1 className="text-3xl sm:text-4xl font-bold text-center text-purple-700 mb-6 flex items-center justify-center gap-2">
-                            <Sparkles className="w-8 h-8 text-pink-500" />
-                            Beauty Concern Matcher
-                        </h1>
-
-                        <section className="mb-8 p-4 bg-purple-50 rounded-lg shadow-inner">
-                            <h2 className="text-xl sm:text-2xl font-semibold text-purple-600 mb-4 flex items-center gap-2">
-                                <Search className="w-6 h-6" />
-                                Select Your Beauty Concerns
-                            </h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {concerns.map(concern => (
-                                    <button
-                                        key={concern.id}
-                                        onClick={() => handleConcernToggle(concern.name)}
-                                        className={`flex items-center justify-center px-4 py-2 rounded-full border-2 transition-all duration-200 ease-in-out
-                                            ${selectedConcerns.includes(concern.name)
-                                                ? 'bg-purple-600 text-white border-purple-700 shadow-md'
-                                                : 'bg-white text-purple-700 border-purple-300 hover:bg-purple-100 hover:border-purple-500'
-                                            }`}
-                                    >
-                                        {selectedConcerns.includes(concern.name) ? (
-                                            <CheckCircle className="w-5 h-5 mr-2" />
-                                        ) : (
-                                            <XCircle className="w-5 h-5 mr-2 opacity-0 group-hover:opacity-100" />
-                                        )}
-                                        {concern.name}
-                                    </button>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className="mb-8 p-4 bg-pink-50 rounded-lg shadow-inner">
-                            <h2 className="text-xl sm:text-2xl font-semibold text-pink-600 mb-4 flex items-center gap-2">
-                                <Brain className="w-6 h-6" />
-                                Or Enter Your Own Concern
-                            </h2>
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <input
-                                    type="text"
-                                    placeholder="e.g., 'Dull skin and dark spots'"
-                                    value={customConcernInput}
-                                    onChange={(e) => {
-                                        setCustomConcernInput(e.target.value);
-                                        setSelectedConcerns([]); // Clear pre-defined selections when custom input is used
-                                    }}
-                                    className="flex-grow p-3 border border-pink-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-400"
-                                />
-                                <button
-                                    onClick={handleGenerateRecommendationsForCustomer}
-                                    disabled={customConcernInput.trim() === '' || generatingMapping}
-                                    className={`px-5 py-3 rounded-md shadow-md transition-colors duration-200 flex items-center justify-center
-                                        ${customConcernInput.trim() === '' || generatingMapping
-                                            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                                            : 'bg-pink-500 text-white hover:bg-pink-600'
-                                        }`}
-                                >
-                                    {generatingMapping ? (
-                                        <span className="flex items-center">
-                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Generating...
-                                        </span>
-                                    ) : (
-                                        <>
-                                            <Sparkles className="w-5 h-5 mr-2" /> Get Recommendations
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </section>
-
-                        {(selectedConcerns.length > 0 || currentCustomerConcern) && (
-                            <>
-                                <section className="mb-8 p-4 bg-purple-50 rounded-lg shadow-inner">
-                                    <h2 className="text-xl sm:text-2xl font-semibold text-purple-600 mb-4 flex items-center gap-2">
-                                        <Sparkles className="w-6 h-6" />
-                                        Recommended Ingredients {currentCustomerConcern && `for "${currentCustomerConcern}"`}
-                                        {!currentCustomerConcern && selectedConcerns.length > 0 && `for ${selectedConcerns.join(', ')}`}
-                                    </h2>
-                                    {recommendedIngredients.length > 0 ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {recommendedIngredients.map(ing => (
-                                                <div key={ing.id} className="bg-white p-4 rounded-lg shadow-sm border border-pink-200">
-                                                    <h3 className="font-bold text-lg text-pink-700 mb-1">{ing.name}</h3>
-                                                    <p className="text-sm text-gray-600">{ing.description}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-gray-600">No specific ingredients recommended for your selection yet.</p>
-                                    )}
-                                </section>
-
-                                <section className="p-4 bg-pink-50 rounded-lg shadow-inner">
-                                    <h2 className="text-xl sm:text-2xl font-semibold text-pink-600 mb-4 flex items-center gap-2">
-                                        <Sparkles className="w-6 h-6" />
-                                        Recommended Products {currentCustomerConcern && `for "${currentCustomerConcern}"`}
-                                        {!currentCustomerConcern && selectedConcerns.length > 0 && `for ${selectedConcerns.join(', ')}`}
-                                    </h2>
-                                    {recommendedProducts.length > 0 ? (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            {recommendedProducts.map(product => (
-                                                <div key={product.id} className="bg-white p-4 rounded-lg shadow-sm border border-purple-200 flex flex-col items-center text-center">
-                                                    <img
-                                                        src={product.imageUrl}
-                                                        alt={product.name}
-                                                        className="w-24 h-24 rounded-lg object-cover mb-3 shadow-md"
-                                                        onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/100x100/CCCCCC/000000?text=Product` }} // Fallback image
-                                                    />
-                                                    <h3 className="font-bold text-lg text-purple-700 mb-1">{product.name}</h3>
-                                                    <p className="text-sm text-gray-600 mb-2">{product.description}</p>
-                                                    <div className="flex flex-wrap justify-center gap-1 mb-3">
-                                                        {product.targetIngredients && product.targetIngredients.map((ing, index) => (
-                                                            <span key={index} className="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full">
-                                                                {ing}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                    {product.shopifyUrl && (
-                                                        <a
-                                                            href={product.shopifyUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center px-4 py-2 bg-pink-500 text-white font-semibold rounded-full shadow-md hover:bg-pink-600 transition-colors duration-200"
-                                                        >
-                                                            View Product
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                                            </svg>
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-gray-600">No products found matching your selected concerns. Try selecting different concerns.</p>
-                                    )}
-                                </section>
-                            </>
-                        )}
-                    </>
-                )}
-
-                {userRole === 'admin' && activeTab === 'admin' && ( // Conditionally render Admin content
-                    <div className="p-4">
-                        <h1 className="text-3xl sm:text-4xl font-bold text-center text-purple-700 mb-6 flex items-center justify-center gap-2">
-                            <Settings className="w-8 h-8 text-pink-500" />
-                            Admin Panel
-                        </h1>
-
-                        <div className="flex justify-center mb-6 border-b border-gray-200">
-                            <button
-                                onClick={() => setAdminSubTab('concerns')}
-                                className={`px-4 py-2 font-medium rounded-t-lg transition-colors duration-200
-                                    ${adminSubTab === 'concerns' ? 'bg-pink-500 text-white shadow-md' : 'text-gray-600 hover:text-pink-700 hover:bg-gray-50'}`}
-                            >
-                                Concerns
-                            </button>
-                            <button
-                                onClick={() => setAdminSubTab('ingredients')}
-                                className={`px-4 py-2 font-medium rounded-t-lg transition-colors duration-200
-                                    ${adminSubTab === 'ingredients' ? 'bg-pink-500 text-white shadow-md' : 'text-gray-600 hover:text-pink-700 hover:bg-gray-50'}`}
-                            >
-                                Ingredients
-                            </button>
-                            <button
-                                onClick={() => setAdminSubTab('products')}
-                                className={`px-4 py-2 font-medium rounded-t-lg transition-colors duration-200
-                                    ${adminSubTab === 'products' ? 'bg-pink-500 text-white shadow-md' : 'text-gray-600 hover:text-pink-700 hover:bg-gray-50'}`}
-                            >
-                                Products
-                            </button>
-                            <button
-                                onClick={() => setAdminSubTab('mappings')}
-                                className={`px-4 py-2 font-medium rounded-t-lg transition-colors duration-200
-                                    ${adminSubTab === 'mappings' ? 'bg-pink-500 text-white shadow-md' : 'text-gray-600 hover:text-pink-700 hover:bg-gray-50'}`}
-                            >
-                                Mappings
-                            </button>
-                        </div>
-
-                        {adminSubTab === 'concerns' && (
-                            <div className="bg-purple-50 p-6 rounded-lg shadow-inner">
-                                <h2 className="text-2xl font-semibold text-purple-600 mb-4 flex items-center gap-2">
-                                    <PlusCircle className="w-6 h-6" /> Manage Concerns
-                                </h2>
-                                <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                                    <input
-                                        type="text"
-                                        placeholder="New Concern Name"
-                                        value={newConcernName}
-                                        onChange={(e) => setNewConcernName(e.target.value)}
-                                        className="flex-grow p-3 border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                    />
-                                    {editingConcern ? (
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={handleUpdateConcern}
-                                                className="px-5 py-3 bg-green-500 text-white font-semibold rounded-md shadow-md hover:bg-green-600 transition-colors duration-200 flex items-center"
-                                            >
-                                                <Save className="w-5 h-5 mr-2" /> Update
-                                            </button>
-                                            <button
-                                                onClick={() => { setEditingConcern(null); setNewConcernName(''); }}
-                                                className="px-5 py-3 bg-gray-400 text-white font-semibold rounded-md shadow-md hover:bg-gray-500 transition-colors duration-200 flex items-center"
-                                            >
-                                                <X className="w-5 h-5 mr-2" /> Cancel
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={handleAddConcern}
-                                            className="px-5 py-3 bg-purple-500 text-white font-semibold rounded-md shadow-md hover:bg-purple-600 transition-colors duration-200 flex items-center"
-                                        >
-                                            <PlusCircle className="w-5 h-5 mr-2" /> Add Concern
-                                        </button>
-                                    )}
-                                </div>
-
-                                <h3 className="text-xl font-semibold text-purple-600 mb-3">Existing Concerns</h3>
-                                <div className="relative mb-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Search concerns..."
-                                        value={concernFilter}
-                                        onChange={(e) => setConcernFilter(e.target.value)}
-                                        className="w-full p-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                    />
-                                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                </div>
-                                <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-purple-200">
-                                    {filteredConcerns.length > 0 ? (
-                                        <ul className="divide-y divide-gray-200">
-                                            {filteredConcerns.map(concern => (
-                                                <li key={concern.id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                                                    <div className="flex items-center">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedConcernIds.includes(concern.id)}
-                                                            onChange={() => handleToggleSelectConcern(concern.id)}
-                                                            className="mr-3 h-5 w-5 text-purple-600 rounded focus:ring-purple-500"
-                                                        />
-                                                        <span className="text-lg">{concern.name}</span>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => handleEditConcern(concern)}
-                                                            className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
-                                                            title="Edit Concern"
-                                                        >
-                                                            <Edit className="w-5 h-5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => showConfirmation("Are you sure you want to delete this concern?", () => handleDeleteConcern(concern.id))}
-                                                            className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                                                            title="Delete Concern"
-                                                        >
-                                                            <Trash2 className="w-5 h-5" />
-                                                        </button>
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p className="p-4 text-gray-600">No concerns found matching your search.</p>
-                                    )}
-                                </div>
-                                {selectedConcernIds.length > 0 && (
-                                    <button
-                                        onClick={handleDeleteSelectedConcerns}
-                                        className="mt-4 px-5 py-3 bg-red-500 text-white font-semibold rounded-md shadow-md hover:bg-red-600 transition-colors duration-200 flex items-center"
-                                    >
-                                        <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedConcernIds.length})
-                                    </button>
-                                )}
-                            </div>
-                        )}
-
-                        {adminSubTab === 'ingredients' && (
-                            <div className="bg-pink-50 p-6 rounded-lg shadow-inner">
-                                <h2 className="text-2xl font-semibold text-pink-600 mb-4 flex items-center gap-2">
-                                    <PlusCircle className="w-6 h-6" /> Manage Ingredients
-                                </h2>
-                                <div className="flex flex-col gap-3 mb-6">
-                                    <input
-                                        type="text"
-                                        placeholder="New Ingredient Name"
-                                        value={newIngredientName}
-                                        onChange={(e) => setNewIngredientName(e.target.value)}
-                                        className="p-3 border border-pink-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-400"
-                                    />
-                                    <textarea
-                                        placeholder="Ingredient Description"
-                                        value={newIngredientDescription}
-                                        onChange={(e) => setNewIngredientDescription(e.target.value)}
-                                        rows="3"
-                                        className="p-3 border border-pink-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-400 resize-y"
-                                    ></textarea>
-                                    {editingIngredient ? (
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={handleUpdateIngredient}
-                                                className="px-5 py-3 bg-green-500 text-white font-semibold rounded-md shadow-md hover:bg-green-600 transition-colors duration-200 flex items-center"
-                                            >
-                                                <Save className="w-5 h-5 mr-2" /> Update
-                                            </button>
-                                            <button
-                                                onClick={() => { setEditingIngredient(null); setNewIngredientName(''); setNewIngredientDescription(''); }}
-                                                className="px-5 py-3 bg-gray-400 text-white font-semibold rounded-md shadow-md hover:bg-gray-500 transition-colors duration-200 flex items-center"
-                                            >
-                                                <X className="w-5 h-5 mr-2" /> Cancel
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={() => handleAddIngredient(newIngredientName, newIngredientDescription)}
-                                            className="px-5 py-3 bg-pink-500 text-white font-semibold rounded-md shadow-md hover:bg-pink-600 transition-colors duration-200 flex items-center"
-                                        >
-                                            <PlusCircle className="w-5 h-5 mr-2" /> Add Ingredient
-                                        </button>
-                                    )}
-                                </div>
-
-                                <h3 className="text-xl font-semibold text-pink-600 mb-3">Existing Ingredients</h3>
-                                <div className="relative mb-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Search ingredients..."
-                                        value={ingredientFilter}
-                                        onChange={(e) => setIngredientFilter(e.target.value)}
-                                        className="w-full p-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-400"
-                                    />
-                                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                </div>
-                                <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-pink-200">
-                                    {filteredIngredients.length > 0 ? (
-                                        <ul className="divide-y divide-gray-200">
-                                            {filteredIngredients.map(ingredient => (
-                                                <li
-                                                    key={ingredient.id}
-                                                    className={`p-4 hover:bg-gray-50 transition-colors relative
-                                                        ${newlyAddedAIIngredientIds.includes(ingredient.id) ? 'bg-yellow-50 border-yellow-300' : ''}`}
-                                                >
-                                                    {newlyAddedAIIngredientIds.includes(ingredient.id) && (
-                                                        <span className="absolute top-2 right-2 bg-yellow-200 text-yellow-800 text-xs px-2 py-1 rounded-full font-semibold">
-                                                            New!
-                                                        </span>
-                                                    )}
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <div className="flex items-center">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedIngredientIds.includes(ingredient.id)}
-                                                                onChange={() => handleToggleSelectIngredient(ingredient.id)}
-                                                                className="mr-3 h-5 w-5 text-pink-600 rounded focus:ring-pink-500"
-                                                            />
-                                                            <span className="text-lg font-medium">{ingredient.name}</span>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                onClick={() => handleEditIngredient(ingredient)}
-                                                                className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
-                                                                title="Edit Ingredient"
-                                                            >
-                                                                <Edit className="w-5 h-5" />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteIngredient(ingredient.id)}
-                                                                className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                                                                title="Delete Ingredient"
-                                                            >
-                                                                <Trash2 className="w-5 h-5" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <p className="text-sm text-gray-600">{ingredient.description}</p>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p className="p-4 text-gray-600">No ingredients found matching your search.</p>
-                                    )}
-                                </div>
-                                {selectedIngredientIds.length > 0 && (
-                                    <button
-                                        onClick={handleDeleteSelectedIngredients}
-                                        className="mt-4 px-5 py-3 bg-red-500 text-white font-semibold rounded-md shadow-md hover:bg-red-600 transition-colors duration-200 flex items-center"
-                                    >
-                                        <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedIngredientIds.length})
-                                    </button>
-                                )}
-                            </div>
-                        )}
-
-                        {adminSubTab === 'products' && (
-                            <div className="bg-purple-50 p-6 rounded-lg shadow-inner">
-                                <h2 className="text-2xl font-semibold text-purple-600 mb-4 flex items-center gap-2">
-                                    <PlusCircle className="w-6 h-6" /> Manage Products
-                                </h2>
-                                <div className="flex flex-col gap-3 mb-6">
-                                    <input
-                                        type="text"
-                                        placeholder="Product Name"
-                                        value={newProductName}
-                                        onChange={(e) => setNewProductName(e.target.value)}
-                                        className="p-3 border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                    />
-                                    <textarea
-                                        placeholder="Product Description"
-                                        value={newProductDescription}
-                                        onChange={(e) => setNewProductDescription(e.target.value)}
-                                        rows="3"
-                                        className="p-3 border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 resize-y"
-                                    ></textarea>
-                                    <input
-                                        type="text"
-                                        placeholder="Image URL (e.g., https://placehold.co/100x100)"
-                                        value={newProductImageUrl}
-                                        onChange={(e) => setNewProductImageUrl(e.target.value)}
-                                        className="p-3 border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Shopify Product URL"
-                                        value={newProductShopifyUrl}
-                                        onChange={(e) => setNewProductShopifyUrl(e.target.value)}
-                                        className="p-3 border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                    />
-
-                                    <h4 className="font-semibold text-purple-600 mt-2 mb-2">Target Ingredients:</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {ingredients.map(ing => (
-                                            <button
-                                                key={ing.id}
-                                                onClick={() => handleIngredientSelection(ing.name)}
-                                                className={`px-3 py-1 rounded-full border transition-all duration-200
-                                                    ${newProductTargetIngredients.includes(ing.name)
-                                                        ? 'bg-purple-600 text-white border-purple-700'
-                                                        : 'bg-white text-purple-700 border-purple-300 hover:bg-purple-100'
-                                                    }`}
-                                            >
-                                                {ing.name}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    {editingProduct ? (
-                                        <div className="flex gap-2 mt-4">
-                                            <button
-                                                onClick={handleUpdateProduct}
-                                                className="px-5 py-3 bg-green-500 text-white font-semibold rounded-md shadow-md hover:bg-green-600 transition-colors duration-200 flex items-center"
-                                            >
-                                                <Save className="w-5 h-5 mr-2" /> Update
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setEditingProduct(null);
-                                                    setNewProductName('');
-                                                    setNewProductDescription('');
-                                                    setNewProductImageUrl('');
-                                                    setNewProductShopifyUrl('');
-                                                    setNewProductTargetIngredients([]);
-                                                }}
-                                                className="px-5 py-3 bg-gray-400 text-white font-semibold rounded-md shadow-md hover:bg-gray-500 transition-colors duration-200 flex items-center"
-                                            >
-                                                <X className="w-5 h-5 mr-2" /> Cancel
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={handleAddProduct}
-                                                className="px-5 py-3 bg-purple-500 text-white font-semibold rounded-md shadow-md hover:bg-purple-600 transition-colors duration-200 flex items-center mt-4"
-                                            >
-                                                <PlusCircle className="w-5 h-5 mr-2" /> Add Product
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    <h3 className="text-xl font-semibold text-purple-600 mb-3">Existing Products</h3>
-                                    <div className="relative mb-4">
-                                        <input
-                                            type="text"
-                                            placeholder="Search products..."
-                                            value={productFilter}
-                                            onChange={(e) => setProductFilter(e.target.value)}
-                                            className="w-full p-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                        />
-                                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                    </div>
-                                    <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-purple-200">
-                                        {filteredProducts.length > 0 ? (
-                                            <ul className="divide-y divide-gray-200">
-                                                {filteredProducts.map(product => (
-                                                    <li key={product.id} className="p-4 hover:bg-gray-50 transition-colors flex flex-col sm:flex-row items-center sm:items-start gap-4">
-                                                        <div className="flex items-center flex-shrink-0">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedProductIds.includes(product.id)}
-                                                                onChange={() => handleToggleSelectProduct(product.id)}
-                                                                className="mr-3 h-5 w-5 text-purple-600 rounded focus:ring-purple-500"
-                                                            />
-                                                            <img
-                                                                src={product.imageUrl}
-                                                                alt={product.name}
-                                                                className="w-20 h-20 rounded-md object-cover"
-                                                                onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/80x80/CCCCCC/000000?text=Prod` }}
-                                                            />
-                                                        </div>
-                                                        <div className="flex-grow text-center sm:text-left">
-                                                            <span className="text-lg font-medium text-purple-800">{product.name}</span>
-                                                            <p className="text-sm text-gray-600 mb-1">{product.description}</p>
-                                                            <div className="flex flex-wrap justify-center sm:justify-start gap-1">
-                                                                {product.targetIngredients && product.targetIngredients.map((ing, index) => (
-                                                                    <span key={index} className="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full">
-                                                                        {ing}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-2 flex-shrink-0 mt-3 sm:mt-0">
-                                                            <button
-                                                                onClick={() => handleEditProduct(product)}
-                                                                className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
-                                                                title="Edit Product"
-                                                            >
-                                                                <Edit className="w-5 h-5" />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteProduct(product.id)}
-                                                                className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                                                                title="Delete Product"
-                                                            >
-                                                                <Trash2 className="w-5 h-5" />
-                                                            </button>
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <p className="p-4 text-gray-600">No products found matching your search.</p>
-                                        )}
-                                    </div>
-                                    {selectedProductIds.length > 0 && (
-                                        <button
-                                            onClick={handleDeleteSelectedProducts}
-                                            className="mt-4 px-5 py-3 bg-red-500 text-white font-semibold rounded-md shadow-md hover:bg-red-600 transition-colors duration-200 flex items-center"
-                                        >
-                                            <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedProductIds.length})
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-
-                            {adminSubTab === 'mappings' && (
-                                <div className="bg-pink-50 p-6 rounded-lg shadow-inner">
-                                    <h2 className="text-2xl font-semibold text-pink-600 mb-4 flex items-center gap-2">
-                                        <Link className="w-6 h-6" /> Manage Concern-Ingredient Mappings
-                                    </h2>
-                                    <div className="flex flex-col gap-3 mb-6">
-                                        <label htmlFor="concern-select" className="font-semibold text-pink-700">Select Concern:</label>
-                                        <select
-                                            id="concern-select"
-                                            value={selectedConcernForMapping}
-                                            onChange={(e) => {
-                                                setSelectedConcernForMapping(e.target.value);
-                                                const existing = concernIngredientMappings.find(m => m.concernName === e.target.value);
-                                                setSelectedIngredientsForMapping(existing ? (existing.ingredientNames || []) : []);
-                                            }}
-                                            className="p-3 border border-pink-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-400"
-                                        >
-                                            <option value="">-- Select a Concern --</option>
-                                            {concerns.map(concern => (
-                                                <option key={concern.id} value={concern.name}>{concern.name}</option>
-                                            ))}
-                                        </select>
-
-                                        <button
-                                            onClick={() => handleGenerateMappingWithAI(selectedConcernForMapping, false)} // Pass false for isCustomerInput
-                                            disabled={!selectedConcernForMapping || generatingMapping}
-                                            className={`px-5 py-3 rounded-md shadow-md transition-colors duration-200 flex items-center justify-center
-                                                ${!selectedConcernForMapping || generatingMapping
-                                                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                                                    : 'bg-purple-500 text-white hover:bg-purple-600'
-                                                }`}
-                                        >
-                                            {generatingMapping ? (
-                                                <span className="flex items-center">
-                                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                    </svg>
-                                                    Generating...
-                                                </span>
-                                            ) : (
-                                                <>
-                                                    <Brain className="w-5 h-5 mr-2" /> Generate Ingredients with AI
-                                                </>
-                                            )}
-                                        </button>
-
-                                        <h4 className="font-semibold text-pink-700 mt-2">Selected Ingredients for this Concern:</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {ingredients.map(ing => (
-                                                <button
-                                                    key={ing.id}
-                                                    onClick={() => handleMappingIngredientToggle(ing.name)}
-                                                    className={`px-3 py-1 rounded-full border transition-all duration-200
-                                                        ${selectedIngredientsForMapping.includes(ing.name)
-                                                            ? 'bg-pink-600 text-white border-pink-700'
-                                                            : 'bg-white text-pink-700 border-pink-300 hover:bg-pink-100'
-                                                        }`}
-                                                >
-                                                    {ing.name}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        <div className="flex gap-2 mt-4">
-                                            <button
-                                                onClick={handleAddUpdateMapping}
-                                                disabled={!selectedConcernForMapping || selectedIngredientsForMapping.length === 0}
-                                                className={`px-5 py-3 rounded-md shadow-md transition-colors duration-200 flex items-center
-                                                    ${!selectedConcernForMapping || selectedIngredientsForMapping.length === 0
-                                                        ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                                                        : 'bg-pink-500 text-white hover:bg-pink-600'
-                                                    }`}
-                                            >
-                                                {editingMapping ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
-                                                {editingMapping ? 'Update Mapping' : 'Add Mapping'}
-                                            </button>
-                                            {editingMapping && (
-                                                <button
-                                                    onClick={resetMappingForm}
-                                                    className="px-5 py-3 bg-gray-400 text-white font-semibold rounded-md shadow-md hover:bg-gray-500 transition-colors duration-200 flex items-center"
-                                                >
-                                                    <X className="w-5 h-5 mr-2" /> Cancel
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <h3 className="text-xl font-semibold text-pink-600 mb-3">Existing Mappings</h3>
-                                    <div className="relative mb-4">
-                                        <input
-                                            type="text"
-                                            placeholder="Search mappings..."
-                                            value={mappingFilter}
-                                            onChange={(e) => setMappingFilter(e.target.value)}
-                                            className="w-full p-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-400"
-                                        />
-                                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                    </div>
-                                    <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-pink-200">
-                                        {filteredMappings.length > 0 ? (
-                                            <ul className="divide-y divide-gray-200">
-                                                {filteredMappings.map(mapping => (
-                                                    <li key={mapping.id} className="p-4 hover:bg-gray-50 transition-colors">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <div className="flex items-center">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={selectedMappingIds.includes(mapping.id)}
-                                                                    onChange={() => handleToggleSelectMapping(mapping.id)}
-                                                                    className="mr-3 h-5 w-5 text-pink-600 rounded focus:ring-pink-500"
-                                                                />
-                                                                <span className="text-lg font-medium text-pink-800">{mapping.concernName}</span>
-                                                            </div>
-                                                            <div className="flex gap-2">
-                                                                <button
-                                                                    onClick={() => handleEditMapping(mapping)}
-                                                                    className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
-                                                                    title="Edit Mapping"
-                                                                >
-                                                                    <Edit className="w-5 h-5" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDeleteMapping(mapping.id)}
-                                                                    className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                                                                    title="Delete Mapping"
-                                                                >
-                                                                    <Trash2 className="w-5 h-5" />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <p className="text-sm text-gray-600">
-                                                            Ingredients: {mapping.ingredientNames && mapping.ingredientNames.length > 0
-                                                                ? mapping.ingredientNames.join(', ')
-                                                                : 'None'}
-                                                        </p>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <p className="p-4 text-gray-600">No mappings found matching your search.</p>
-                                        )}
-                                    </div>
-                                    {selectedMappingIds.length > 0 && (
-                                        <button
-                                            onClick={handleDeleteSelectedMappings}
-                                            className="mt-4 px-5 py-3 bg-red-500 text-white font-semibold rounded-md shadow-md hover:bg-red-600 transition-colors duration-200 flex items-center"
-                                        >
-                                            <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedMappingIds.length})
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    export default App;
+export default App;
