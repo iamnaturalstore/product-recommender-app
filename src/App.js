@@ -5,7 +5,8 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 // eslint-disable-next-line no-unused-vars
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, addDoc, deleteDoc, getDocs } from 'firebase/firestore';
-import { CheckCircle, XCircle, Search, Sparkles, Settings, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Filter, Download } from 'lucide-react'; // Added Download icon
+// Removed XCircle, Search, Settings, Filter as they were unused based on ESLint report
+import { CheckCircle, Sparkles, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Download } from 'lucide-react'; // Added Download icon
 
 // IMPORTANT: For Netlify deployment, environment variables are accessed via process.env
 // and need to be prefixed with REACT_APP_ (e.g., REACT_APP_APP_ID, REACT_APP_FIREBASE_CONFIG).
@@ -106,7 +107,8 @@ const App = () => {
     const [selectedConcernForMapping, setSelectedConcernForMapping] = useState('');
     const [selectedIngredientsForMapping, setSelectedIngredientsForMapping] = useState([]);
     const [editingMapping, setEditingMapping] = useState(null);
-    const [generatingMapping, setGeneratingMapping] = useState(false);
+    // Removed generatingMapping and setGeneratingMapping as they were unused based on ESLint report
+    // const [generatingMapping, setGeneratingMapping] = useState(false);
 
     const [editingConcern, setEditingConcern] = useState(null);
     const [editingIngredient, setEditingIngredient] = useState(null);
