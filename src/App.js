@@ -8,6 +8,10 @@ import { getFirestore, collection, query, onSnapshot, doc, setDoc, addDoc, delet
 // Removed XCircle, Search, Settings, Filter as they were unused based on ESLint report
 import { CheckCircle, Sparkles, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Download, Lightbulb } from 'lucide-react'; // Added Download icon, Lightbulb
 
+// Custom Confirmation Modal Component (Assumed to be in a separate file, imported here)
+import ConfirmationModal from './ConfirmationModal'; // MOVED TO TOP FOR ESLINT COMPLIANCE
+
+
 // IMPORTANT: For Netlify deployment, environment variables are accessed via process.env
 // and need to be prefixed with REACT_APP_ (e.g., REACT_APP_APP_ID, REACT_APP_FIREBASE_CONFIG).
 // For local development or Canvas preview, you might use a .env file or specific globals.
@@ -48,10 +52,6 @@ if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId) {
     console.error("Firebase configuration is missing or incomplete. Cannot initialize Firebase.");
     // Optionally set a state or show a message indicating Firebase is not initialized
 }
-
-// Custom Confirmation Modal Component (Assumed to be in a separate file, imported here)
-// This definition was removed from here. Ensure you have ConfirmationModal.js in your src directory.
-import ConfirmationModal from './ConfirmationModal';
 
 
 const App = () => {
