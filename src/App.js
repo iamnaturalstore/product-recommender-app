@@ -9,7 +9,7 @@ import { getFirestore, collection, query, onSnapshot, doc, setDoc, addDoc, delet
 import { CheckCircle, Sparkles, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Download, Lightbulb } from 'lucide-react'; // Added Download icon, Lightbulb
 
 // Custom Confirmation Modal Component (Assumed to be in a separate file, imported here)
-import ConfirmationModal from './ConfirmationModal'; // MOVED TO TOP FOR ESLINT COMPLIANCE
+import ConfirmationModal from './ConfirmationModal';
 
 
 // IMPORTANT: For Netlify deployment, environment variables are accessed via process.env
@@ -691,7 +691,37 @@ const App = () => {
             }
             return prev;
         });
+        // Crucially, set the concern for mapping here so it's pre-selected on the Mappings tab
+        if (newConcernName.trim() !== '') {
+            setSelectedConcernForMapping(newConcernName.trim());
+        }
         showConfirmation(`'${aiIngName}' added to current mapping selection.`, null, false);
+    };
+
+    // NEW: Function to add ALL AI-suggested ingredients to the current mapping selection and switch tab
+    const handleAddAllAIIngredientsToMapping = () => {
+        if (aiSuggestedIngredientsForAdmin.length === 0) {
+            showConfirmation("No AI-suggested ingredients to add.", null, false);
+            return;
+        }
+
+        const newIngredientsToAdd = new Set(selectedIngredientsForMapping);
+        aiSuggestedIngredientsForAdmin.forEach(aiIng => {
+            if (!newIngredientsToAdd.has(aiIng.name)) {
+                newIngredientsToAdd.add(aiIng.name);
+            }
+        });
+
+        setSelectedIngredientsForMapping(Array.from(newIngredientsToAdd));
+
+        // Set the concern for mapping to the one currently being edited/added
+        if (newConcernName.trim() !== '') {
+            setSelectedConcernForMapping(newConcernName.trim());
+        }
+
+        showConfirmation(`All ${aiSuggestedIngredientsForAdmin.length} AI-suggested ingredients added to mapping selection.`, null, false);
+        setActiveTab('admin'); // Ensure admin tab is active
+        setAdminSubTab('mappings'); // Switch to Mappings tab
     };
 
 
@@ -1293,6 +1323,14 @@ const App = () => {
                                                     <h4 className="text-lg font-semibold text-indigo-700 mb-3 flex items-center">
                                                         <Sparkles className="w-5 h-5 mr-2" /> AI Suggested Ingredients:
                                                     </h4>
+                                                    <div className="flex justify-end mb-3">
+                                                        <button
+                                                            onClick={handleAddAllAIIngredientsToMapping}
+                                                            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md shadow-md hover:bg-blue-700 transition-colors flex items-center"
+                                                        >
+                                                            <PlusCircle className="w-4 h-4 mr-2" /> Add All to Mapping
+                                                        </button>
+                                                    </div>
                                                     <ul className="space-y-2">
                                                         {aiSuggestedIngredientsForAdmin.map((aiIng, index) => (
                                                             <li key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-white rounded-md border border-indigo-100 shadow-sm">
