@@ -719,9 +719,10 @@ const App = () => {
             setSelectedConcernForMapping(newConcernName.trim());
         }
 
-        showConfirmation(`All ${aiSuggestedIngredientsForAdmin.length} AI-suggested ingredients added to mapping selection.`, null, false);
+        showConfirmation(`All ${aiSuggestedIngredientsForAdmin.length} AI-suggested ingredients added to mapping selection. Now go to the Mappings tab and click 'Add Mapping' to save.`, null, false);
         setActiveTab('admin'); // Ensure admin tab is active
         setAdminSubTab('mappings'); // Switch to Mappings tab
+        setEditingMapping(null); // Ensure it's treated as a new mapping
     };
 
 
@@ -990,6 +991,28 @@ const App = () => {
                 : [...prev, ingredientName]
         );
     };
+
+    // NEW: Effect to pre-populate mapping form when a concern is selected in the dropdown
+    useEffect(() => {
+        if (adminSubTab === 'mappings' && selectedConcernForMapping) {
+            const existingMapping = concernIngredientMappings.find(
+                m => m.concernName === selectedConcernForMapping
+            );
+            if (existingMapping) {
+                setEditingMapping(existingMapping);
+                setSelectedIngredientsForMapping(existingMapping.ingredientNames || []);
+            } else {
+                // If no existing mapping for this concern, clear ingredients and editing state
+                setEditingMapping(null);
+                setSelectedIngredientsForMapping([]);
+            }
+        } else if (adminSubTab === 'mappings' && !selectedConcernForMapping) {
+            // If no concern is selected, clear everything
+            setEditingMapping(null);
+            setSelectedIngredientsForMapping([]);
+        }
+    }, [selectedConcernForMapping, concernIngredientMappings, adminSubTab]); // Dependencies
+
 
     // NEW: Handle Fetch Products from Shopify
     const handleFetchShopifyProducts = async () => {
