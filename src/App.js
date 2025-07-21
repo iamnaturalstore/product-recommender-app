@@ -2,18 +2,18 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, onSnapshot } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'; // Added signInWithEmailAndPassword and signOut
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import ReactDOM from 'react-dom'; // Ensure ReactDOM is imported for portals
 
 // Import lucide-react icons
-import { PlusCircle, Trash2, Edit, Save, X, Lightbulb, User, Settings, ShoppingBag, AlignJustify } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Save, X, Lightbulb, User, Settings, ShoppingBag, AlignJustify, LogOut } from 'lucide-react'; // Added LogOut icon
 
 // Placeholder for ConfirmationModal - ensure you have this file in src/
 import ConfirmationModal from './ConfirmationModal';
 
 // Dummy content for the customer view. Replace with actual customer-facing components.
-const CustomerView = ({ products, ingredients, concerns, mappings, handleCustomerFilter, handleApplyFilters, filteredProducts, handleSelectProduct, handleClearSelectedProduct, selectedProduct, handleIngredientToggle, selectedIngredients, handleApplyIngredientFilter, filterIngredients, handleResetFilters }) => (
+const CustomerView = ({ products, ingredients, concerns, mappings, handleCustomerFilter, handleApplyFilters, filteredProducts, handleSelectProduct, handleClearSelectedProduct, selectedProduct, handleIngredientToggle, selectedIngredients, handleApplyIngredientFilter, handleResetFilters }) => ( // Removed filterIngredients
     <div className="p-6 bg-white rounded-lg shadow-md max-w-4xl mx-auto">
         <h2 className="text-3xl font-bold text-gray-800 mb-6">Customer View</h2>
 
@@ -130,14 +130,26 @@ const AuthProvider = ({ children }) => {
                 // No user is signed in.
                 setUser(null);
                 console.log('No user signed in.');
-                // Attempt anonymous sign-in if no user is signed in
-                signInAnonymously(auth)
-                    .then((userCredential) => {
-                        console.log('Signed in anonymously.');
-                    })
-                    .catch((error) => {
-                        console.error('Anonymous sign-in failed:', error);
-                    });
+                // Attempt custom token sign-in if available, otherwise anonymous
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    // Use signInWithCustomToken if a token is provided by the environment
+                    signInWithEmailAndPassword(auth, 'admin@example.com', 'password123') // Attempt admin login
+                        .then((userCredential) => {
+                            console.log('Signed in with custom token (or admin credentials).');
+                        })
+                        .catch((error) => {
+                            console.error('Custom token or admin sign-in failed:', error);
+                            // Fallback to anonymous if custom token/admin login fails
+                            signInAnonymously(auth)
+                                .then(() => console.log('Signed in anonymously after custom token/admin failure.'))
+                                .catch((anonError) => console.error('Anonymous sign-in failed after custom token/admin failure:', anonError));
+                        });
+                } else {
+                    // Fallback to anonymous sign-in if no custom token is provided
+                    signInAnonymously(auth)
+                        .then(() => console.log('Signed in anonymously (no custom token).'))
+                        .catch((error) => console.error('Anonymous sign-in failed:', error));
+                }
             }
             setIsAuthReady(true);
         });
@@ -155,7 +167,7 @@ const useAuth = () => useContext(AuthContext);
 
 // Main App Component
 const App = () => {
-    const { user, isAuthReady, db, auth, functions } = useAuth();
+    const { user, isAuthReady, db, auth, functions } = useAuth(); // 'user' is now used in JSX below
 
     // State for UI management
     const [userRole, setUserRole] = useState('customer'); // 'customer' or 'admin'
@@ -195,7 +207,7 @@ const App = () => {
     const [selectedIngredients, setSelectedIngredients] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [selectedProduct, setSelectedProduct] = useState(null); // For product detail view
-    const [filterIngredients, setFilterIngredients] = useState([]); // For ingredient filter in customer view
+    // Removed: const [filterIngredients, setFilterIngredients] = useState([]); // For ingredient filter in customer view
 
     // State for mapping filter
     const [mappingFilter, setMappingFilter] = useState('');
@@ -573,13 +585,6 @@ const App = () => {
         }
     };
 
-    // Renamed from handleUpdateMapping to handleAddMapping (which handles both add/update)
-    // This function is now redundant as handleAddMapping handles updates.
-    // Keeping it as a placeholder for clarity if needed in the future, but it's not used directly.
-    // const handleUpdateMapping = async () => {
-    //     // This logic is now part of handleAddMapping
-    // };
-
     const handleEditMapping = (mapping) => {
         setSelectedConcernForMapping(mapping.concernName);
         setSelectedIngredientsForMapping(mapping.ingredientNames || []);
@@ -687,12 +692,11 @@ const App = () => {
 
     // User Login/Logout (for admin access)
     const handleAdminLogin = async () => {
-        // You would typically have a login form here.
         // For demonstration, using hardcoded credentials (NOT for production!)
         try {
-            // Replace with actual email/password if using. For now, it will likely fall back to anonymous.
-            // await signInWithEmailAndPassword(auth, 'admin@example.com', 'password123');
-            alert('Admin logged in! (Note: Using anonymous sign-in for demo)');
+            // Attempt admin login with hardcoded credentials
+            await signInWithEmailAndPassword(auth, 'admin@example.com', 'password123');
+            alert('Admin logged in!');
             setUserRole('admin'); // Set role on successful login
         } catch (error) {
             console.error('Admin login failed:', error);
@@ -767,7 +771,7 @@ const App = () => {
                         handleIngredientToggle={handleIngredientToggle}
                         selectedIngredients={selectedIngredients}
                         handleApplyIngredientFilter={handleApplyIngredientFilter}
-                        filterIngredients={filterIngredients}
+                        // Removed filterIngredients={filterIngredients}
                         handleResetFilters={handleResetFilters}
                     />
                 )}
@@ -799,10 +803,24 @@ const App = () => {
                             >
                                 <AlignJustify className="inline-block mr-2 w-4 h-4" />Manage Mappings
                             </button>
+                            {/* Admin Logout Button */}
+                            <button
+                                onClick={handleAdminLogout}
+                                className="px-4 py-2 rounded-md font-medium transition-colors bg-red-600 text-white hover:bg-red-700"
+                            >
+                                <LogOut className="inline-block mr-2 w-4 h-4" />Logout
+                            </button>
                         </div>
 
                         {/* Admin Sub-Tabs Content */}
                         <div className="bg-white p-6 rounded-lg shadow-md">
+                            {/* Display current user ID in Admin Portal */}
+                            {user && user.uid && (
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Logged in as Admin (User ID: {user.uid})
+                                </p>
+                            )}
+
                             {/* Concerns Tab */}
                             {adminSubTab === 'concerns' && (
                                 <div className="space-y-6">
@@ -1243,4 +1261,11 @@ const App = () => {
     );
 };
 
-export default App;
+// Wrap App with AuthProvider to provide context
+const RootApp = () => (
+    <AuthProvider>
+        <App />
+    </AuthProvider>
+);
+
+export default RootApp; // Export RootApp instead of App
