@@ -573,6 +573,13 @@ const App = () => {
         }
     };
 
+    // Renamed from handleUpdateMapping to handleAddMapping (which handles both add/update)
+    // This function is now redundant as handleAddMapping handles updates.
+    // Keeping it as a placeholder for clarity if needed in the future, but it's not used directly.
+    // const handleUpdateMapping = async () => {
+    //     // This logic is now part of handleAddMapping
+    // };
+
     const handleEditMapping = (mapping) => {
         setSelectedConcernForMapping(mapping.concernName);
         setSelectedIngredientsForMapping(mapping.ingredientNames || []);
@@ -1123,7 +1130,7 @@ const App = () => {
                                         </div>
                                         <div className="flex gap-3 justify-end">
                                             <button
-                                                onClick={editingMapping ? handleUpdateMapping : handleAddMapping}
+                                                onClick={handleAddMapping} {/* Changed from editingMapping ? handleUpdateMapping : handleAddMapping */}
                                                 className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 transition-colors flex items-center justify-center whitespace-nowrap"
                                             >
                                                 {editingMapping ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
