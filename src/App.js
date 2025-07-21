@@ -6,8 +6,7 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 // eslint-disable-next-line no-unused-vars
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, addDoc, deleteDoc, getDocs } from 'firebase/firestore';
 // Removed XCircle, Search, Settings, Filter as they were unused based on ESLint report
-import { CheckCircle, Sparkles, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Download, Lightbulb } from 'lucide-react'; // Added Download and Lightbulb icon
-import { getFunctions, httpsCallable } from 'firebase/functions'; // Import getFunctions and httpsCallable
+import { CheckCircle, Sparkles, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Download } from 'lucide-react'; // Added Download icon
 
 // IMPORTANT: For Netlify deployment, environment variables are accessed via process.env
 // and need to be prefixed with REACT_APP_ (e.g., REACT_APP_APP_ID, REACT_APP_FIREBASE_CONFIG).
@@ -34,14 +33,13 @@ try {
 
 
 // Initialize Firebase outside the component to prevent re-initialization
-let app, db, auth, functions; // Declare functions here
+let app, db, auth;
 // Added a check to ensure firebaseConfig is a non-empty object with projectId before initializing
 if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId) {
     try {
         app = initializeApp(firebaseConfig);
         db = getFirestore(app);
         auth = getAuth(app);
-        functions = getFunctions(app); // Initialize functions
     } catch (error) {
         console.error("Firebase initialization error:", error);
         // Handle error, e.g., display a message to the user
@@ -151,9 +149,9 @@ const App = () => {
     const [aiSuggestedConcernNames, setAiSuggestedConcernNames] = useState([]);
     const [generatingConcernSuggestions, setGeneratingConcernSuggestions] = useState(false);
 
-    // NEW STATE for AI suggested ingredients in Admin Mapping tab
-    const [aiSuggestedIngredientsForMappingTab, setAiSuggestedIngredientsForMappingTab] = useState([]);
-    const [generatingAIIngredientsForMappingTab, setGeneratingAIIngredientsForMappingTab] = useState(false);
+    // NEW STATE for AI suggested ingredients for mapping
+    const [aiSuggestedMappingIngredients, setAiSuggestedMappingIngredients] = useState([]);
+    const [generatingMappingIngredientSuggestions, setGeneratingMappingIngredientSuggestions] = useState(false);
 
 
     const publicDataPath = `artifacts/${appId}/public/data`;
@@ -809,7 +807,7 @@ const App = () => {
         showConfirmation("Are you sure you want to delete this product?", async () => {
             try {
                 await deleteDoc(doc(db, `${publicDataPath}/products`, id));
-            }  catch (e) {
+            } catch (e) {
                 console.error("Error deleting product: ", e);
                 showConfirmation("Failed to delete product. Please try again.", null, false);
             }
@@ -857,6 +855,7 @@ const App = () => {
             });
             setSelectedConcernForMapping('');
             setSelectedIngredientsForMapping([]);
+            setAiSuggestedMappingIngredients([]); // Clear AI suggestions after adding
         } catch (e) {
             console.error("Error adding mapping: ", e);
             showConfirmation("Failed to add mapping. Please try again.", null, false);
@@ -867,6 +866,7 @@ const App = () => {
         setEditingMapping(mapping);
         setSelectedConcernForMapping(mapping.concernName);
         setSelectedIngredientsForMapping(mapping.ingredientNames || []);
+        setAiSuggestedMappingIngredients([]); // Clear AI suggestions when editing existing
     };
 
     const handleUpdateMapping = async () => {
@@ -882,6 +882,7 @@ const App = () => {
             setEditingMapping(null);
             setSelectedConcernForMapping('');
             setSelectedIngredientsForMapping([]);
+            setAiSuggestedMappingIngredients([]); // Clear AI suggestions after updating
         } catch (e) {
             console.error("Error updating mapping: ", e);
             showConfirmation("Failed to update mapping. Please try again.", null, false);
@@ -892,7 +893,7 @@ const App = () => {
         showConfirmation("Are you sure you want to delete this mapping?", async () => {
             try {
                 await deleteDoc(doc(db, `${publicDataPath}/concernIngredientMappings`, id));
-            }  catch (e) {
+            } catch (e) {
                 console.error("Error deleting mapping: ", e);
                 showConfirmation("Failed to delete mapping. Please try again.", null, false);
             }
@@ -926,6 +927,56 @@ const App = () => {
                 : [...prev, ingredientName]
         );
     };
+
+    // NEW: Function to generate AI ingredient suggestions for Mapping tab
+    const handleGenerateAIIngredientSuggestionsForMapping = async () => {
+        if (!selectedConcernForMapping) {
+            showConfirmation("Please select a concern first to get ingredient suggestions.", null, false);
+            return;
+        }
+
+        setGeneratingMappingIngredientSuggestions(true);
+        setAiSuggestedMappingIngredients([]); // Clear previous suggestions
+
+        const prompt = `Given the beauty concern: "${selectedConcernForMapping}", what are 3-5 key skincare ingredients that would effectively address this? Provide only the ingredient names, separated by commas. For example: "Salicylic Acid, Niacinamide, Hyaluronic Acid".`;
+
+        try {
+            const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+            if (!apiKey) {
+                showConfirmation("Gemini API Key is not configured. Please contact support.", null, false);
+                setGeneratingMappingIngredientSuggestions(false);
+                return;
+            }
+
+            const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = { contents: chatHistory };
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                const text = result.candidates[0].content.parts[0].text;
+                const suggestions = text.split(',').map(s => s.trim()).filter(s => s !== '');
+                setAiSuggestedMappingIngredients(suggestions);
+            } else {
+                showConfirmation("No AI ingredient suggestions found. Please try again.", null, false);
+            }
+        } catch (error) {
+            console.error("Error generating AI ingredient suggestions for mapping:", error);
+            showConfirmation("Failed to get AI ingredient suggestions. Please try again.", null, false);
+        } finally {
+            setGeneratingMappingIngredientSuggestions(false);
+        }
+    };
+
 
     // NEW: Handle Fetch Products from Shopify
     const handleFetchShopifyProducts = async () => {
@@ -1129,6 +1180,9 @@ const App = () => {
                                                             <div className="flex-grow">
                                                                 <h5 className="font-bold text-lg text-gray-800">{product.name}</h5>
                                                                 <p className="text-gray-600 text-sm mt-1">{product.description}</p>
+                                                                {product.targetIngredients && product.targetIngredients.length > 0 && (
+                                                                    <p className="text-gray-500 text-xs mt-1">Key Ingredients: {product.targetIngredients.join(', ')}</p>
+                                                                )}
                                                                 {product.shopifyUrl && (
                                                                     <a
                                                                         href={product.shopifyUrl}
@@ -1352,7 +1406,7 @@ const App = () => {
                                                     </button>
                                                     {editingIngredient && (
                                                         <button
-                                                            onClick={() => { setNewIngredientName(''); setNewIngredientDescription(''); }}
+                                                            onClick={() => { setEditingIngredient(null); setNewIngredientName(''); setNewIngredientDescription(''); }}
                                                             className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
                                                         >
                                                             <X className="w-5 h-5 mr-2" /> Cancel
@@ -1525,7 +1579,7 @@ const App = () => {
                                                     </button>
                                                     {editingProduct && (
                                                         <button
-                                                            onClick={() => { setNewProductName(''); setNewProductDescription(''); setNewProductImageUrl(''); setNewProductShopifyUrl(''); setNewProductTargetIngredients([]); }}
+                                                            onClick={() => { setEditingProduct(null); setNewProductName(''); setNewProductDescription(''); setNewProductImageUrl(''); setNewProductShopifyUrl(''); setNewProductTargetIngredients([]); }}
                                                             className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
                                                         >
                                                             <X className="w-5 h-5 mr-2" /> Cancel
@@ -1608,7 +1662,7 @@ const App = () => {
                                                     value={selectedConcernForMapping}
                                                     onChange={(e) => {
                                                         setSelectedConcernForMapping(e.target.value);
-                                                        setAiSuggestedIngredientsForMappingTab([]); // Clear AI suggestions when concern changes
+                                                        setAiSuggestedMappingIngredients([]); // Clear suggestions when concern changes
                                                     }}
                                                     className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
                                                 >
@@ -1618,59 +1672,16 @@ const App = () => {
                                                     ))}
                                                 </select>
 
-                                                {/* NEW: AI Suggest Ingredients for Mapping Button */}
-                                                {selectedConcernForMapping && (
+                                                {/* NEW: AI Suggest Ingredients Button for Mappings */}
+                                                <div className="flex justify-end mt-2">
                                                     <button
-                                                        onClick={async () => {
-                                                            setGeneratingAIIngredientsForMappingTab(true);
-                                                            setAiSuggestedIngredientsForMappingTab([]); // Clear previous suggestions
-                                                            const prompt = `Given the beauty concern: "${selectedConcernForMapping}", what are the top 3-5 key skincare ingredients that would effectively address this? Provide only the ingredient names, separated by commas. For example: "Ingredient1, Ingredient2".`;
-
-                                                            try {
-                                                                if (typeof getFunctions === 'undefined' || !functions) {
-                                                                    showConfirmation("Cloud Functions not initialized. Cannot generate AI suggestions.", null, false);
-                                                                    return;
-                                                                }
-                                                                const geminiApiKey = process.env.REACT_APP_GEMINI_API_KEY;
-                                                                if (!geminiApiKey) {
-                                                                    showConfirmation("Gemini API Key is not configured. Please contact support.", null, false);
-                                                                    return;
-                                                                }
-
-                                                                const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-                                                                const payload = { contents: chatHistory };
-                                                                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-
-                                                                const response = await fetch(apiUrl, {
-                                                                    method: 'POST',
-                                                                    headers: { 'Content-Type': 'application/json' },
-                                                                    body: JSON.stringify(payload)
-                                                                });
-
-                                                                const result = await response.json();
-
-                                                                if (result.candidates && result.candidates.length > 0 &&
-                                                                    result.candidates[0].content && result.candidates[0].content.parts &&
-                                                                    result.candidates[0].content.parts.length > 0) {
-                                                                    const text = result.candidates[0].content.parts[0].text;
-                                                                    const suggestions = text.split(',').map(s => s.trim()).filter(s => s !== '');
-                                                                    setAiSuggestedIngredientsForMappingTab(suggestions);
-                                                                } else {
-                                                                    showConfirmation("No AI suggestions found. Please try again.", null, false);
-                                                                }
-                                                            } catch (error) {
-                                                                console.error("Error generating AI ingredient suggestions:", error);
-                                                                showConfirmation("Failed to get AI suggestions. Please try again.", null, false);
-                                                            } finally {
-                                                                setGeneratingAIIngredientsForMappingTab(false);
-                                                            }
-                                                        }}
-                                                        disabled={generatingAIIngredientsForMappingTab}
-                                                        className="px-5 py-2 bg-blue-500 text-white font-semibold rounded-md shadow-md hover:bg-blue-600 transition-colors flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        onClick={handleGenerateAIIngredientSuggestionsForMapping}
+                                                        disabled={!selectedConcernForMapping || generatingMappingIngredientSuggestions}
+                                                        className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-md shadow-md hover:bg-blue-600 transition-colors flex items-center justify-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
-                                                        {generatingAIIngredientsForMappingTab ? (
+                                                        {generatingMappingIngredientSuggestions ? (
                                                             <span className="flex items-center">
-                                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                                 </svg>
@@ -1678,28 +1689,28 @@ const App = () => {
                                                             </span>
                                                         ) : (
                                                             <>
-                                                                <Lightbulb className="w-5 h-5 mr-2" /> Suggest Ingredients (AI)
+                                                                <Brain className="w-4 h-4 mr-2" /> AI Suggest Ingredients
                                                             </>
                                                         )}
                                                     </button>
-                                                )}
+                                                </div>
 
-                                                {/* NEW: Display AI Suggested Ingredients for Mapping */}
-                                                {aiSuggestedIngredientsForMappingTab.length > 0 && (
-                                                    <div className="mt-4 p-3 bg-blue-100 rounded-lg border border-blue-200">
-                                                        <p className="text-sm font-semibold text-blue-800 mb-2">AI Suggestions for "{selectedConcernForMapping}":</p>
+                                                {/* NEW: Display AI Suggested Ingredients for Mappings */}
+                                                {aiSuggestedMappingIngredients.length > 0 && (
+                                                    <div className="mt-2 p-3 bg-blue-100 rounded-lg border border-blue-200">
+                                                        <p className="text-sm font-semibold text-blue-800 mb-2">AI Suggestions:</p>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {aiSuggestedIngredientsForMappingTab.map((ingredient, index) => (
+                                                            {aiSuggestedMappingIngredients.map((suggestion, index) => (
                                                                 <button
-                                                                    key={index} // Using index as key is okay for static lists without reordering
-                                                                    onClick={() => handleIngredientToggleForMapping(ingredient)} // Directly add to selectedIngredientsForMapping
+                                                                    key={index}
+                                                                    onClick={() => handleIngredientToggleForMapping(suggestion)}
                                                                     className={`px-3 py-1 rounded-full text-sm transition-colors duration-200 ${
-                                                                        selectedIngredientsForMapping.includes(ingredient)
-                                                                            ? 'bg-purple-200 text-purple-800'
-                                                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                        selectedIngredientsForMapping.includes(suggestion)
+                                                                            ? 'bg-blue-300 text-blue-900'
+                                                                            : 'bg-blue-200 text-blue-800 hover:bg-blue-300'
                                                                     }`}
                                                                 >
-                                                                    {ingredient}
+                                                                    {suggestion}
                                                                 </button>
                                                             ))}
                                                         </div>
@@ -1734,7 +1745,7 @@ const App = () => {
                                                     </button>
                                                     {editingMapping && (
                                                         <button
-                                                            onClick={() => { setEditingMapping(null); setSelectedConcernForMapping(''); setSelectedIngredientsForMapping([]); setAiSuggestedIngredientsForMappingTab([]); }}
+                                                            onClick={() => { setEditingMapping(null); setSelectedConcernForMapping(''); setSelectedIngredientsForMapping([]); setAiSuggestedMappingIngredients([]); }}
                                                             className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
                                                         >
                                                             <X className="w-5 h-5 mr-2" /> Cancel
@@ -1779,7 +1790,6 @@ const App = () => {
                                                                 />
                                                                 <div>
                                                                     <span className="font-medium text-gray-700">{mapping.concernName}</span>
-                                                                    {/* This is where the ingredients are displayed */}
                                                                     {mapping.ingredientNames && mapping.ingredientNames.length > 0 && (
                                                                         <p className="text-gray-500 text-sm">Ingredients: {mapping.ingredientNames.join(', ')}</p>
                                                                     )}
@@ -1825,7 +1835,7 @@ const App = () => {
                 )}
             </div>
 
-            {/* Confirmation Modal Portal */}\
+            {/* Confirmation Modal Portal */}
             {showConfirmModal && ReactDOM.createPortal(
                 <ConfirmationModal
                     message={confirmMessage}
