@@ -9,7 +9,7 @@ import { getFirestore, collection, query, onSnapshot, doc, setDoc, addDoc, delet
 import { CheckCircle, Sparkles, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Download } from 'lucide-react'; // Added Download icon
 
 // IMPORTANT: For Netlify deployment, environment variables are accessed via process.env
-// and need to be prefixed with REACT_APP_ (e.g., REACT_APP_APP_ID, REACT_APP_FIREBASE_CONFIG).
+// and need to be prefixed with REACT_APP_ (e.g., REACT_APP_APP_ID, REACT_APP_FIREBASE_CONFIG).\
 // For local development or Canvas preview, you might use a .env file or specific globals.
 // This code is designed for Netlify deployment.
 const appId = typeof process.env.REACT_APP_APP_ID !== 'undefined' ? process.env.REACT_APP_APP_ID : 'default-app-id';
@@ -1077,9 +1077,22 @@ const App = () => {
 
             {/* Main Content Area */}
             <div className="w-full max-w-4xl bg-white p-6 rounded-xl shadow-2xl border border-gray-200">
-                {loading ? (
-                    <div className="text-center py-10 text-lg text-purple-600">Loading application data...</div>
-                ) : (
+                {/* Global Loading Indicator */}
+                {loading && (
+                    <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50 rounded-xl">
+                        <div className="flex flex-col items-center">
+                            <svg className="animate-spin h-10 w-10 text-purple-600 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p className="text-purple-700 font-semibold">Loading data...</p>
+                        </div>
+                    </div>
+                )}
+                {/* End Global Loading Indicator */}
+
+                {/* Conditional rendering based on loading state */}
+                {!loading && (
                     <>
                         {/* Customer View Content */}
                         {activeTab === 'customer' && (
@@ -1089,23 +1102,27 @@ const App = () => {
                                 {/* Pre-defined Concerns */}
                                 <div className="mb-8 p-4 bg-purple-50 rounded-lg border border-purple-100 shadow-inner">
                                     <h3 className="text-xl font-semibold text-purple-600 mb-4">Select Your Concerns:</h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                        {concerns.filter(c => c.name.toLowerCase().includes(concernFilter.toLowerCase()))
-                                            .map(concern => (
-                                                <button
-                                                    key={concern.id}
-                                                    onClick={() => handleConcernToggle(concern.name)}
-                                                    className={`flex items-center justify-center px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base ${
-                                                        selectedConcerns.includes(concern.name)
-                                                            ? 'bg-purple-600 text-white border-purple-700 shadow-md transform scale-105'
-                                                            : 'bg-white text-gray-700 border-gray-300 hover:border-purple-300 hover:shadow-sm'
-                                                    }`}
-                                                >
-                                                    {selectedConcerns.includes(concern.name) && <CheckCircle className="w-5 h-5 mr-2" />}
-                                                    {concern.name}
-                                                </button>
-                                            ))}
-                                    </div>
+                                    {concerns.length === 0 ? (
+                                        <p className="text-center text-gray-500 py-4">No concerns available. Please add some in the Admin View.</p>
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                            {concerns.filter(c => c.name.toLowerCase().includes(concernFilter.toLowerCase()))
+                                                .map(concern => (
+                                                    <button
+                                                        key={concern.id}
+                                                        onClick={() => handleConcernToggle(concern.name)}
+                                                        className={`flex items-center justify-center px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base ${
+                                                            selectedConcerns.includes(concern.name)
+                                                                ? 'bg-purple-600 text-white border-purple-700 shadow-md transform scale-105'
+                                                                : 'bg-white text-gray-700 border-gray-300 hover:border-purple-300 hover:shadow-sm'
+                                                        }`}
+                                                    >
+                                                        {selectedConcerns.includes(concern.name) && <CheckCircle className="w-5 h-5 mr-2" />}
+                                                        {concern.name}
+                                                    </button>
+                                                ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Custom Concern Input */}
