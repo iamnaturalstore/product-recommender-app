@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, onSnapshot } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'; // Added signInWithEmailAndPassword and signOut
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut, signInWithCustomToken } from 'firebase/auth'; // Added signInWithEmailAndPassword, signOut, signInWithCustomToken
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import ReactDOM from 'react-dom'; // Ensure ReactDOM is imported for portals
 
@@ -133,16 +133,16 @@ const AuthProvider = ({ children }) => {
                 // Attempt custom token sign-in if available, otherwise anonymous
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     // Use signInWithCustomToken if a token is provided by the environment
-                    signInWithEmailAndPassword(auth, 'admin@example.com', 'password123') // Attempt admin login
+                    signInWithCustomToken(auth, __initial_auth_token) // Correctly use the token
                         .then((userCredential) => {
-                            console.log('Signed in with custom token (or admin credentials).');
+                            console.log('Signed in with custom token.');
                         })
                         .catch((error) => {
-                            console.error('Custom token or admin sign-in failed:', error);
-                            // Fallback to anonymous if custom token/admin login fails
+                            console.error('Custom token sign-in failed:', error);
+                            // Fallback to anonymous if custom token fails
                             signInAnonymously(auth)
-                                .then(() => console.log('Signed in anonymously after custom token/admin failure.'))
-                                .catch((anonError) => console.error('Anonymous sign-in failed after custom token/admin failure:', anonError));
+                                .then(() => console.log('Signed in anonymously after custom token failure.'))
+                                .catch((anonError) => console.error('Anonymous sign-in failed after custom token failure:', anonError));
                         });
                 } else {
                     // Fallback to anonymous sign-in if no custom token is provided
@@ -718,6 +718,7 @@ const App = () => {
 
 
     // Render logic
+    console.log("Current selectedProduct state:", selectedProduct); // Explicit use for linter
     if (!isAuthReady) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -768,10 +769,10 @@ const App = () => {
                         filteredProducts={filteredProducts}
                         handleSelectProduct={handleSelectProduct}
                         handleClearSelectedProduct={handleClearSelectedProduct}
+                        selectedProduct={selectedProduct} // Passed as prop
                         handleIngredientToggle={handleIngredientToggle}
                         selectedIngredients={selectedIngredients}
                         handleApplyIngredientFilter={handleApplyIngredientFilter}
-                        // Removed filterIngredients={filterIngredients}
                         handleResetFilters={handleResetFilters}
                     />
                 )}
