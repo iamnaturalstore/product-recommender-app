@@ -1082,14 +1082,14 @@ const App = () => {
         <div className="min-h-screen bg-gradient-to-br from-purple-100 to-pink-100 font-inter text-gray-800 flex flex-col items-center p-4 sm:p-6">
             {/* User ID Display */}
             {userId && (
-                <div className="w-full max-w-4xl bg-white p-3 rounded-xl shadow-lg mb-4 text-center text-sm text-gray-600 border border-gray-100">
+                <div className="w-full max-w-6xl bg-white p-3 rounded-xl shadow-lg mb-4 text-center text-sm text-gray-600 border border-gray-100">
                     User ID: <span className="font-mono text-purple-700 font-semibold">{userId}</span>
                 </div>
             )}
 
             {/* Tab Navigation - Only visible if userRole is 'admin' */}
             {userRole === 'admin' && (
-                <div className="w-full max-w-4xl bg-white p-2 rounded-xl shadow-xl mb-6 flex justify-center space-x-4 border border-gray-100">
+                <div className="w-full max-w-6xl bg-white p-2 rounded-xl shadow-xl mb-6 flex justify-center space-x-4 border border-gray-100">
                     <button
                         onClick={() => setActiveTab('customer')}
                         className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
@@ -1114,7 +1114,7 @@ const App = () => {
             )}
 
             {/* Main Content Area */}
-            <div className="w-full max-w-4xl bg-white p-6 rounded-3xl shadow-2xl border border-gray-100 relative overflow-hidden">
+            <div className="w-full max-w-6xl bg-white p-6 rounded-3xl shadow-2xl border border-gray-100 relative overflow-hidden">
                 {/* Global Loading Indicator */}
                 {loading && (
                     <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50 rounded-3xl">
@@ -1344,7 +1344,7 @@ const App = () => {
                                                 <button
                                                     onClick={handleGenerateConcernSuggestions}
                                                     disabled={generatingConcernSuggestions}
-                                                    className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center text-sm disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+                                                    className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center text-base disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
                                                 >
                                                     {generatingConcernSuggestions ? (
                                                         <span className="flex items-center">
