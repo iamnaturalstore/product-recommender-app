@@ -6,7 +6,7 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 // eslint-disable-next-line no-unused-vars
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, addDoc, deleteDoc, getDocs } from 'firebase/firestore';
 // Removed XCircle, Search, Settings, Filter as they were unused based on ESLint report
-import { CheckCircle, Sparkles, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Download } from 'lucide-react'; // Added Download icon
+import { CheckCircle, Sparkles, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Download, Lightbulb } from 'lucide-react'; // Added Download and Lightbulb icon
 
 // IMPORTANT: For Netlify deployment, environment variables are accessed via process.env
 // and need to be prefixed with REACT_APP_ (e.g., REACT_APP_APP_ID, REACT_APP_FIREBASE_CONFIG).
@@ -148,6 +148,10 @@ const App = () => {
     // NEW STATE for AI suggested concerns in Admin view
     const [aiSuggestedConcernNames, setAiSuggestedConcernNames] = useState([]);
     const [generatingConcernSuggestions, setGeneratingConcernSuggestions] = useState(false);
+
+    // NEW STATE for AI suggested ingredients in Admin Mapping tab
+    const [aiSuggestedIngredientsForMappingTab, setAiSuggestedIngredientsForMappingTab] = useState([]);
+    const [generatingAIIngredientsForMappingTab, setGeneratingAIIngredientsForMappingTab] = useState(false);
 
 
     const publicDataPath = `artifacts/${appId}/public/data`;
@@ -886,7 +890,7 @@ const App = () => {
         showConfirmation("Are you sure you want to delete this mapping?", async () => {
             try {
                 await deleteDoc(doc(db, `${publicDataPath}/concernIngredientMappings`, id));
-            } catch (e) {
+            }  catch (e) {
                 console.error("Error deleting mapping: ", e);
                 showConfirmation("Failed to delete mapping. Please try again.", null, false);
             }
@@ -1123,9 +1127,6 @@ const App = () => {
                                                             <div className="flex-grow">
                                                                 <h5 className="font-bold text-lg text-gray-800">{product.name}</h5>
                                                                 <p className="text-gray-600 text-sm mt-1">{product.description}</p>
-                                                                {product.targetIngredients && product.targetIngredients.length > 0 && (
-                                                                    <p className="text-gray-500 text-xs mt-1">Key Ingredients: {product.targetIngredients.join(', ')}</p>
-                                                                )}
                                                                 {product.shopifyUrl && (
                                                                     <a
                                                                         href={product.shopifyUrl}
@@ -1349,7 +1350,7 @@ const App = () => {
                                                     </button>
                                                     {editingIngredient && (
                                                         <button
-                                                            onClick={() => { setEditingIngredient(null); setNewIngredientName(''); setNewIngredientDescription(''); }}
+                                                            onClick={() => { setNewIngredientName(''); setNewIngredientDescription(''); }}
                                                             className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
                                                         >
                                                             <X className="w-5 h-5 mr-2" /> Cancel
@@ -1684,6 +1685,7 @@ const App = () => {
                                                                 />
                                                                 <div>
                                                                     <span className="font-medium text-gray-700">{mapping.concernName}</span>
+                                                                    {/* This is where the ingredients are displayed */}
                                                                     {mapping.ingredientNames && mapping.ingredientNames.length > 0 && (
                                                                         <p className="text-gray-500 text-sm">Ingredients: {mapping.ingredientNames.join(', ')}</p>
                                                                     )}
