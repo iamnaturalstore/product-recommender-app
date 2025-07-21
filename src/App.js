@@ -425,7 +425,7 @@ const App = () => {
                 : [...prevSelected, concernName]
         );
         setCustomConcernInput(''); // Clear custom input when pre-defined concerns are selected
-        setCurrentCustomerConcern(''); // Clear custom concern source
+        setCurrentCustomerConcern(''); // Clear current source when typing
     };
 
     // --- Confirmation Modal Handlers ---
@@ -1011,10 +1011,48 @@ const App = () => {
             //     targetIngredients: [], // You'd need a way to map Shopify product tags/metafields to ingredients
             // }));
 
+            // Updated mock data for more realistic simulation
             const mockShopifyProducts = [
-                { id: `shopify_prod_1_${Date.now()}`, name: 'Simulated Shopify Product A', description: 'A great product from your Shopify store.', imageUrl: 'https://placehold.co/100x100/ADD8E6/000000?text=Shopify+A', shopifyUrl: `https://${shopifyStoreDomain}/products/a`, targetIngredients: [] },
-                { id: `shopify_prod_2_${Date.now() + 1}`, name: 'Simulated Shopify Product B', description: 'Another fantastic Shopify item.', imageUrl: 'https://placehold.co/100x100/B0E0E6/000000?text=Shopify+B', shopifyUrl: `https://${shopifyStoreDomain}/products/b`, targetIngredients: [] },
-                { id: `shopify_prod_3_${Date.now() + 2}`, name: 'Simulated Shopify Product C', description: 'Your customers will love this.', imageUrl: 'https://placehold.co/100x100/87CEEB/000000?text=Shopify+C', shopifyUrl: `https://${shopifyStoreDomain}/products/c`, targetIngredients: [] },
+                {
+                    id: `shopify_prod_1_${Date.now()}`,
+                    name: 'Hydrating Face Serum with Hyaluronic Acid',
+                    description: 'A lightweight serum designed to deeply hydrate and plump the skin, reducing the appearance of fine lines.',
+                    imageUrl: 'https://placehold.co/100x100/AEC6CF/000000?text=Hydrating+Serum',
+                    shopifyUrl: `https://${shopifyStoreDomain}/products/hydrating-serum`,
+                    targetIngredients: ['Hyaluronic Acid']
+                },
+                {
+                    id: `shopify_prod_2_${Date.now() + 1}`,
+                    name: 'Acne Spot Treatment with Salicylic Acid',
+                    description: 'Fast-acting spot treatment to clear breakouts and prevent new ones with salicylic acid.',
+                    imageUrl: 'https://placehold.co/100x100/FFD700/000000?text=Acne+Treatment',
+                    shopifyUrl: `https://${shopifyStoreDomain}/products/acne-treatment`,
+                    targetIngredients: ['Salicylic Acid']
+                },
+                {
+                    id: `shopify_prod_3_${Date.now() + 2}`,
+                    name: 'Brightening Vitamin C Cream',
+                    description: 'Visibly brightens and evens skin tone while providing antioxidant protection.',
+                    imageUrl: 'https://placehold.co/100x100/FFB6C1/000000?text=Vitamin+C+Cream',
+                    shopifyUrl: `https://${shopifyStoreDomain}/products/vitamin-c-cream`,
+                    targetIngredients: ['Vitamin C']
+                },
+                {
+                    id: `shopify_prod_4_${Date.now() + 3}`,
+                    name: 'Niacinamide Redness Relief Toner',
+                    description: 'A soothing toner formulated with Niacinamide to calm redness and minimize pores.',
+                    imageUrl: 'https://placehold.co/100x100/98FB98/000000?text=Niacinamide+Toner',
+                    shopifyUrl: `https://${shopifyStoreDomain}/products/niacinamide-toner`,
+                    targetIngredients: ['Niacinamide']
+                },
+                {
+                    id: `shopify_prod_5_${Date.now() + 4}`,
+                    name: 'Anti-Aging Retinol Night Cream',
+                    description: 'Powerful night cream with Retinol to reduce the appearance of wrinkles and improve skin texture.',
+                    imageUrl: 'https://placehold.co/100x100/DDA0DD/000000?text=Retinol+Cream',
+                    shopifyUrl: `https://${shopifyStoreDomain}/products/retinol-cream`,
+                    targetIngredients: ['Retinol']
+                }
             ];
 
             await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
@@ -1041,33 +1079,33 @@ const App = () => {
 
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 font-inter text-gray-800 flex flex-col items-center p-4 sm:p-6">
+        <div className="min-h-screen bg-gradient-to-br from-purple-100 to-pink-100 font-inter text-gray-800 flex flex-col items-center p-4 sm:p-6">
             {/* User ID Display */}
             {userId && (
-                <div className="w-full max-w-4xl bg-white p-3 rounded-lg shadow-sm mb-4 text-center text-sm text-gray-600 border border-gray-200">
-                    User ID: <span className="font-mono text-purple-600">{userId}</span>
+                <div className="w-full max-w-4xl bg-white p-3 rounded-xl shadow-lg mb-4 text-center text-sm text-gray-600 border border-gray-100">
+                    User ID: <span className="font-mono text-purple-700 font-semibold">{userId}</span>
                 </div>
             )}
 
             {/* Tab Navigation - Only visible if userRole is 'admin' */}
             {userRole === 'admin' && (
-                <div className="w-full max-w-4xl bg-white p-2 rounded-lg shadow-md mb-6 flex justify-center space-x-4 border border-gray-200">
+                <div className="w-full max-w-4xl bg-white p-2 rounded-xl shadow-xl mb-6 flex justify-center space-x-4 border border-gray-100">
                     <button
                         onClick={() => setActiveTab('customer')}
-                        className={`px-6 py-2 rounded-md font-semibold transition-all duration-200 ${
+                        className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
                             activeTab === 'customer'
-                                ? 'bg-purple-600 text-white shadow-lg'
-                                : 'bg-gray-100 text-gray-700 hover:bg-purple-100'
+                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                                : 'bg-gray-50 text-gray-700 hover:bg-purple-50 hover:text-purple-700'
                         }`}
                     >
                         Customer View
                     </button>
                     <button
                         onClick={() => setActiveTab('admin')}
-                        className={`px-6 py-2 rounded-md font-semibold transition-all duration-200 ${
+                        className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
                             activeTab === 'admin'
-                                ? 'bg-purple-600 text-white shadow-lg'
-                                : 'bg-gray-100 text-gray-700 hover:bg-purple-100'
+                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                                : 'bg-gray-50 text-gray-700 hover:bg-purple-50 hover:text-purple-700'
                         }`}
                     >
                         Admin View
@@ -1076,16 +1114,16 @@ const App = () => {
             )}
 
             {/* Main Content Area */}
-            <div className="w-full max-w-4xl bg-white p-6 rounded-xl shadow-2xl border border-gray-200">
+            <div className="w-full max-w-4xl bg-white p-6 rounded-3xl shadow-2xl border border-gray-100 relative overflow-hidden">
                 {/* Global Loading Indicator */}
                 {loading && (
-                    <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50 rounded-xl">
+                    <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50 rounded-3xl">
                         <div className="flex flex-col items-center">
-                            <svg className="animate-spin h-10 w-10 text-purple-600 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <svg className="animate-spin h-12 w-12 text-purple-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            <p className="text-purple-700 font-semibold">Loading data...</p>
+                            <p className="text-purple-700 font-semibold text-lg">Loading data, please wait...</p>
                         </div>
                     </div>
                 )}
@@ -1096,28 +1134,28 @@ const App = () => {
                     <>
                         {/* Customer View Content */}
                         {activeTab === 'customer' && (
-                            <div className="space-y-8">
-                                <h2 className="text-3xl font-bold text-purple-700 mb-6 text-center">Personalized Beauty Recommendations</h2>
+                            <div className="space-y-10">
+                                <h2 className="text-4xl font-extrabold text-purple-800 mb-8 text-center drop-shadow-sm">Personalized Beauty Recommendations</h2>
 
                                 {/* Pre-defined Concerns */}
-                                <div className="mb-8 p-4 bg-purple-50 rounded-lg border border-purple-100 shadow-inner">
-                                    <h3 className="text-xl font-semibold text-purple-600 mb-4">Select Your Concerns:</h3>
+                                <div className="mb-8 p-6 bg-purple-50 rounded-2xl border border-purple-200 shadow-inner">
+                                    <h3 className="text-2xl font-bold text-purple-700 mb-5">Select Your Concerns:</h3>
                                     {concerns.length === 0 ? (
-                                        <p className="text-center text-gray-500 py-4">No concerns available. Please add some in the Admin View.</p>
+                                        <p className="text-center text-gray-500 py-6 text-lg">No concerns available. Please add some in the Admin View to get started!</p>
                                     ) : (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
                                             {concerns.filter(c => c.name.toLowerCase().includes(concernFilter.toLowerCase()))
                                                 .map(concern => (
                                                     <button
                                                         key={concern.id}
                                                         onClick={() => handleConcernToggle(concern.name)}
-                                                        className={`flex items-center justify-center px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base ${
+                                                        className={`flex items-center justify-center px-5 py-3 rounded-xl border-2 transition-all duration-300 text-base sm:text-lg font-medium transform hover:scale-105 active:scale-95 ${
                                                             selectedConcerns.includes(concern.name)
-                                                                ? 'bg-purple-600 text-white border-purple-700 shadow-md transform scale-105'
-                                                                : 'bg-white text-gray-700 border-gray-300 hover:border-purple-300 hover:shadow-sm'
+                                                                ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border-purple-700 shadow-lg'
+                                                                : 'bg-white text-gray-800 border-gray-300 hover:border-purple-400 hover:shadow-md'
                                                         }`}
                                                     >
-                                                        {selectedConcerns.includes(concern.name) && <CheckCircle className="w-5 h-5 mr-2" />}
+                                                        {selectedConcerns.includes(concern.name) && <CheckCircle className="w-6 h-6 mr-2 text-white" />}
                                                         {concern.name}
                                                     </button>
                                                 ))}
@@ -1126,8 +1164,8 @@ const App = () => {
                                 </div>
 
                                 {/* Custom Concern Input */}
-                                <div className="mb-8 p-4 bg-pink-50 rounded-lg border border-pink-100 shadow-inner">
-                                    <h3 className="text-xl font-semibold text-pink-600 mb-4">Or Enter Your Own Concern:</h3>
+                                <div className="mb-8 p-6 bg-pink-50 rounded-2xl border border-pink-200 shadow-inner">
+                                    <h3 className="text-2xl font-bold text-pink-700 mb-5">Or Enter Your Own Concern:</h3>
                                     <div className="flex flex-col sm:flex-row gap-4">
                                         <input
                                             type="text"
@@ -1137,14 +1175,14 @@ const App = () => {
                                                 setSelectedConcerns([]); // Clear pre-defined selections when typing custom
                                                 setCurrentCustomerConcern(''); // Clear current source when typing
                                             }}
-                                            placeholder="e.g., 'Dullness and uneven texture'"
-                                            className="flex-grow px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all duration-200"
+                                            placeholder="e.g., 'Dullness and uneven texture, sensitive skin'"
+                                            className="flex-grow px-5 py-3 border border-gray-300 rounded-xl focus:ring-4 focus:ring-pink-300 focus:border-pink-500 outline-none transition-all duration-200 text-lg"
                                         />
                                         <button
                                             onClick={() => handleGenerateRecommendationsForCustomer(customConcernInput)}
-                                            className="px-6 py-3 bg-pink-500 text-white font-semibold rounded-lg shadow-md hover:bg-pink-600 transition-colors flex items-center justify-center whitespace-nowrap"
+                                            className="px-7 py-3 bg-gradient-to-r from-pink-500 to-red-500 text-white font-bold rounded-xl shadow-lg hover:from-pink-600 hover:to-red-600 transition-all duration-300 transform hover:scale-105 flex items-center justify-center whitespace-nowrap text-lg"
                                         >
-                                            <Sparkles className="w-5 h-5 mr-2" /> Get Recommendations
+                                            <Sparkles className="w-6 h-6 mr-2" /> Get Recommendations
                                         </button>
                                     </div>
                                 </div>
@@ -1152,28 +1190,28 @@ const App = () => {
 
                                 {/* Recommendations Display */}
                                 {(recommendedIngredients.length > 0 || recommendedProducts.length > 0) && (
-                                    <div className="p-6 bg-yellow-50 rounded-lg border border-yellow-200 shadow-lg">
-                                        <h3 className="text-2xl font-bold text-yellow-800 mb-6 text-center">
-                                            Recommendations for {currentCustomerConcern || selectedConcerns.join(', ')}
+                                    <div className="p-8 bg-yellow-50 rounded-3xl border border-yellow-300 shadow-2xl">
+                                        <h3 className="text-3xl font-extrabold text-yellow-800 mb-7 text-center">
+                                            Recommendations for <span className="text-purple-700">{currentCustomerConcern || selectedConcerns.join(', ')}</span>
                                         </h3>
 
                                         {recommendedIngredients.length > 0 && (
-                                            <div className="mb-8">
-                                                <h4 className="text-xl font-semibold text-yellow-800 mb-4 flex items-center">
-                                                    <Brain className="w-6 h-6 mr-2" /> Recommended Ingredients:
+                                            <div className="mb-10">
+                                                <h4 className="text-2xl font-bold text-yellow-800 mb-5 flex items-center">
+                                                    <Brain className="w-7 h-7 mr-3 text-purple-600" /> Recommended Ingredients:
                                                 </h4>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                     {recommendedIngredients.map(ingredient => (
                                                         <div
                                                             key={ingredient.id}
-                                                            className={`p-4 rounded-lg border-2 ${
+                                                            className={`p-5 rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 ${
                                                                 newlyAddedAIIngredientIds.includes(ingredient.id)
-                                                                    ? 'bg-blue-100 border-blue-600 animate-pulse' // Highlight new AI ingredients
-                                                                    : 'bg-white border-yellow-200'
-                                                            } shadow-sm`}
+                                                                    ? 'bg-blue-100 border-blue-600 animate-pulse-once shadow-xl' // Highlight new AI ingredients
+                                                                    : 'bg-white border-yellow-200 shadow-md'
+                                                            }`}
                                                         >
-                                                            <h5 className="font-bold text-lg text-gray-800">{ingredient.name}</h5>
-                                                            <p className="text-gray-600 text-sm mt-1">{ingredient.description}</p>
+                                                            <h5 className="font-bold text-xl text-gray-900 mb-2">{ingredient.name}</h5>
+                                                            <p className="text-gray-700 text-base">{ingredient.description}</p>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1182,32 +1220,32 @@ const App = () => {
 
                                         {recommendedProducts.length > 0 && (
                                             <div>
-                                                <h4 className="text-xl font-semibold text-yellow-800 mb-4 flex items-center">
-                                                    <Link className="w-6 h-6 mr-2" /> Recommended Products:
+                                                <h4 className="text-2xl font-bold text-yellow-800 mb-5 flex items-center">
+                                                    <Link className="w-7 h-7 mr-3 text-purple-600" /> Recommended Products:
                                                 </h4>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                     {recommendedProducts.map(product => (
-                                                        <div key={product.id} className="p-4 bg-white rounded-lg border border-yellow-200 shadow-sm flex items-center space-x-4">
+                                                        <div key={product.id} className="p-5 bg-white rounded-2xl border border-yellow-200 shadow-md flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-5 transition-all duration-300 transform hover:scale-105">
                                                             <img
-                                                                src={product.imageUrl || `https://placehold.co/100x100/ADD8E6/000000?text=${product.name}`}
+                                                                src={product.imageUrl || `https://placehold.co/120x120/ADD8E6/000000?text=${product.name}`}
                                                                 alt={product.name}
-                                                                className="w-20 h-20 rounded-md object-cover border border-gray-200"
-                                                                onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/100x100/CCCCCC/000000?text=Image+Error`; }}
+                                                                className="w-24 h-24 sm:w-28 sm:h-28 rounded-lg object-cover border border-gray-200 shadow-sm flex-shrink-0"
+                                                                onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/120x120/CCCCCC/000000?text=Image+Error`; }}
                                                             />
-                                                            <div className="flex-grow">
-                                                                <h5 className="font-bold text-lg text-gray-800">{product.name}</h5>
-                                                                <p className="text-gray-600 text-sm mt-1">{product.description}</p>
+                                                            <div className="flex-grow text-center sm:text-left">
+                                                                <h5 className="font-bold text-xl text-gray-900 mb-1">{product.name}</h5>
+                                                                <p className="text-gray-700 text-base mt-1">{product.description}</p>
                                                                 {product.targetIngredients && product.targetIngredients.length > 0 && (
-                                                                    <p className="text-gray-500 text-xs mt-1">Key Ingredients: {product.targetIngredients.join(', ')}</p>
+                                                                    <p className="text-gray-600 text-sm mt-2 font-medium">Key Ingredients: <span className="font-normal">{product.targetIngredients.join(', ')}</span></p>
                                                                 )}
                                                                 {product.shopifyUrl && (
                                                                     <a
                                                                         href={product.shopifyUrl}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
-                                                                        className="inline-flex items-center text-purple-600 hover:text-purple-700 text-sm mt-2 font-semibold"
+                                                                        className="inline-flex items-center text-purple-600 hover:text-purple-800 text-base mt-3 font-semibold transition-colors duration-200"
                                                                     >
-                                                                        View Product <Link className="w-4 h-4 ml-1" />
+                                                                        View Product <Link className="w-5 h-5 ml-2" />
                                                                     </a>
                                                                 )}
                                                             </div>
@@ -1223,47 +1261,47 @@ const App = () => {
 
                         {/* Admin View Content - Only visible if activeTab is 'admin' */}
                         {activeTab === 'admin' && (
-                            <div className="space-y-8">
-                                <h2 className="text-3xl font-bold text-purple-700 mb-6 text-center">Admin Dashboard</h2>
+                            <div className="space-y-10">
+                                <h2 className="text-4xl font-extrabold text-purple-800 mb-8 text-center drop-shadow-sm">Admin Dashboard</h2>
 
                                 {/* Admin Sub-Tabs */}
-                                <div className="w-full bg-gray-100 p-2 rounded-lg shadow-inner mb-6 flex justify-center space-x-4 border border-gray-200">
+                                <div className="w-full bg-gray-100 p-3 rounded-2xl shadow-lg mb-8 flex flex-wrap justify-center gap-4 border border-gray-200">
                                     <button
                                         onClick={() => setAdminSubTab('concerns')}
-                                        className={`px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
+                                        className={`px-5 py-2 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
                                             adminSubTab === 'concerns'
-                                                ? 'bg-purple-600 text-white shadow-md'
-                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100 hover:text-purple-700'
                                         }`}
                                     >
                                         Concerns
                                     </button>
                                     <button
                                         onClick={() => setAdminSubTab('ingredients')}
-                                        className={`px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
+                                        className={`px-5 py-2 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
                                             adminSubTab === 'ingredients'
-                                                ? 'bg-purple-600 text-white shadow-md'
-                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100 hover:text-purple-700'
                                         }`}
                                     >
                                         Ingredients
                                     </button>
                                     <button
                                         onClick={() => setAdminSubTab('products')}
-                                        className={`px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
+                                        className={`px-5 py-2 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
                                             adminSubTab === 'products'
-                                                ? 'bg-purple-600 text-white shadow-md'
-                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100 hover:text-purple-700'
                                         }`}
                                     >
                                         Products
                                     </button>
                                     <button
                                         onClick={() => setAdminSubTab('mappings')}
-                                        className={`px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
+                                        className={`px-5 py-2 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
                                             adminSubTab === 'mappings'
-                                                ? 'bg-purple-600 text-white shadow-md'
-                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100 hover:text-purple-700'
                                         }`}
                                     >
                                         Mappings
@@ -1272,22 +1310,22 @@ const App = () => {
 
                                 {/* Admin Sub-Tab Content */}
                                 {adminSubTab === 'concerns' && (
-                                    <div className="space-y-6">
-                                        <h3 className="text-2xl font-bold text-purple-600 mb-4">Manage Concerns</h3>
+                                    <div className="space-y-8">
+                                        <h3 className="text-3xl font-bold text-purple-700 mb-6">Manage Concerns</h3>
                                         {/* Add Concern Form */}
-                                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-100 shadow-inner">
-                                            <h4 className="text-lg font-semibold text-purple-700 mb-3">{editingConcern ? 'Edit Concern' : 'Add New Concern'}</h4>
-                                            <div className="flex flex-col sm:flex-row gap-3 items-end">
+                                        <div className="p-6 bg-purple-50 rounded-2xl border border-purple-200 shadow-lg">
+                                            <h4 className="text-xl font-semibold text-purple-800 mb-4">{editingConcern ? 'Edit Concern' : 'Add New Concern'}</h4>
+                                            <div className="flex flex-col sm:flex-row gap-4 items-end">
                                                 <input
                                                     type="text"
                                                     value={newConcernName}
                                                     onChange={(e) => setNewConcernName(e.target.value)}
                                                     placeholder="Enter concern name"
-                                                    className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                    className="flex-grow px-5 py-3 border border-gray-300 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 outline-none transition-all duration-200 text-lg"
                                                 />
                                                 <button
                                                     onClick={editingConcern ? handleUpdateConcern : handleAddConcern}
-                                                    className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl shadow-md hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center whitespace-nowrap text-base"
                                                 >
                                                     {editingConcern ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
                                                     {editingConcern ? 'Update Concern' : 'Add Concern'}
@@ -1295,18 +1333,18 @@ const App = () => {
                                                 {editingConcern && (
                                                     <button
                                                         onClick={() => { setEditingConcern(null); setNewConcernName(''); }}
-                                                        className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                        className="px-5 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-200 transform hover:scale-105 flex items-center justify-center whitespace-nowrap text-base"
                                                     >
                                                         <X className="w-5 h-5 mr-2" /> Cancel
                                                     </button>
                                                 )}
                                             </div>
                                             {/* NEW: AI Suggest Concerns Button */}
-                                            <div className="mt-4 flex justify-end">
+                                            <div className="mt-5 flex justify-end">
                                                 <button
                                                     onClick={handleGenerateConcernSuggestions}
                                                     disabled={generatingConcernSuggestions}
-                                                    className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-md shadow-md hover:bg-blue-600 transition-colors flex items-center justify-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center text-sm disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
                                                 >
                                                     {generatingConcernSuggestions ? (
                                                         <span className="flex items-center">
@@ -1318,21 +1356,21 @@ const App = () => {
                                                         </span>
                                                     ) : (
                                                         <>
-                                                            <Brain className="w-4 h-4 mr-2" /> AI Suggest Concerns
+                                                            <Brain className="w-5 h-5 mr-2" /> AI Suggest Concerns
                                                         </>
                                                     )}
                                                 </button>
                                             </div>
                                             {/* NEW: Display AI Suggested Concerns */}
                                             {aiSuggestedConcernNames.length > 0 && (
-                                                <div className="mt-4 p-3 bg-blue-100 rounded-lg border border-blue-200">
-                                                    <p className="text-sm font-semibold text-blue-800 mb-2">AI Suggestions:</p>
-                                                    <div className="flex flex-wrap gap-2">
+                                                <div className="mt-4 p-4 bg-blue-100 rounded-xl border border-blue-300 shadow-inner">
+                                                    <p className="text-base font-semibold text-blue-800 mb-3">AI Suggestions:</p>
+                                                    <div className="flex flex-wrap gap-3">
                                                         {aiSuggestedConcernNames.map((suggestion, index) => (
                                                             <button
                                                                 key={index}
                                                                 onClick={() => setNewConcernName(suggestion)}
-                                                                className="px-3 py-1 bg-blue-200 text-blue-800 rounded-full text-xs hover:bg-blue-300 transition-colors"
+                                                                className="px-4 py-2 bg-blue-200 text-blue-800 rounded-full text-sm font-medium hover:bg-blue-300 transition-colors transform hover:scale-105"
                                                             >
                                                                 {suggestion}
                                                             </button>
@@ -1343,80 +1381,80 @@ const App = () => {
                                         </div>
 
                                         {/* Concern List */}
-                                        <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-md">
-                                            <div className="flex justify-between items-center mb-4">
-                                                <h4 className="text-lg font-semibold text-gray-800">Existing Concerns ({concerns.length})</h4>
+                                        <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-lg">
+                                            <div className="flex flex-col sm:flex-row justify-between items-center mb-5 gap-4">
+                                                <h4 className="text-xl font-semibold text-gray-800">Existing Concerns ({concerns.length})</h4>
                                                 <input
                                                     type="text"
                                                     value={concernFilter}
                                                     onChange={(e) => setConcernFilter(e.target.value)}
                                                     placeholder="Filter concerns..."
-                                                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-purple-500 outline-none"
+                                                    className="px-4 py-2 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-purple-300 outline-none w-full sm:w-auto"
                                                 />
                                             </div>
                                             {selectedConcernIds.length > 0 && (
                                                 <button
                                                     onClick={handleDeleteSelectedConcerns}
-                                                    className="mb-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-sm"
+                                                    className="mb-5 px-5 py-2 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-base transform hover:scale-105"
                                                 >
-                                                    <Trash2 className="w-4 h-4 mr-2" /> Delete Selected ({selectedConcernIds.length})
+                                                    <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedConcernIds.length})
                                                 </button>
                                             )}
-                                            <ul className="space-y-2">
+                                            <ul className="space-y-3">
                                                 {concerns
                                                     .filter(c => c.name.toLowerCase().includes(concernFilter.toLowerCase()))
                                                     .map(concern => (
-                                                        <li key={concern.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 shadow-sm">
-                                                            <div className="flex items-center">
+                                                        <li key={concern.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md hover:border-purple-300">
+                                                            <div className="flex items-center mb-2 sm:mb-0">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedConcernIds.includes(concern.id)}
                                                                     onChange={() => handleToggleSelectConcern(concern.id)}
-                                                                    className="mr-3 h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                                    className="mr-3 h-5 w-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
                                                                 />
-                                                                <span className="font-medium text-gray-700">{concern.name}</span>
+                                                                <span className="font-medium text-lg text-gray-700">{concern.name}</span>
                                                             </div>
-                                                            <div className="flex space-x-2">
-                                                                <button onClick={() => handleEditConcern(concern)} className="text-blue-600 hover:text-blue-800 transition-colors">
-                                                                    <Edit className="w-5 h-5" />
+                                                            <div className="flex space-x-3 ml-auto sm:ml-0">
+                                                                <button onClick={() => handleEditConcern(concern)} className="text-blue-600 hover:text-blue-800 transition-colors transform hover:scale-110">
+                                                                    <Edit className="w-6 h-6" />
                                                                 </button>
-                                                                <button onClick={() => showConfirmation("Are you sure you want to delete this concern?", () => handleDeleteConcern(concern.id))} className="text-red-600 hover:text-red-800 transition-colors">
-                                                                    <Trash2 className="w-5 h-5" />
+                                                                <button onClick={() => showConfirmation("Are you sure you want to delete this concern?", () => handleDeleteConcern(concern.id))} className="text-red-600 hover:text-red-800 transition-colors transform hover:scale-110">
+                                                                    <Trash2 className="w-6 h-6" />
                                                                 </button>
                                                             </div>
                                                         </li>
                                                     ))}
                                             </ul>
-                                            {concerns.length === 0 && <p className="text-center text-gray-500 py-4">No concerns added yet.</p>}
+                                            {concerns.length === 0 && <p className="text-center text-gray-500 py-6 text-lg">No concerns added yet. Use the form above to add your first concern.</p>}
                                         </div>
                                     </div>
                                 )}
 
                                 {adminSubTab === 'ingredients' && (
-                                    <div className="space-y-6">
-                                        <h3 className="text-2xl font-bold text-purple-600 mb-4">Manage Ingredients</h3>
+                                    <div className="space-y-8">
+                                        <h3 className="text-3xl font-bold text-purple-700 mb-6">Manage Ingredients</h3>
                                         {/* Add Ingredient Form */}
-                                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-100 shadow-inner">
-                                            <h4 className="text-lg font-semibold text-purple-700 mb-3">{editingIngredient ? 'Edit Ingredient' : 'Add New Ingredient'}</h4>
-                                            <div className="flex flex-col gap-3">
+                                        <div className="p-6 bg-purple-50 rounded-2xl border border-purple-100 shadow-lg">
+                                            <h4 className="text-xl font-semibold text-purple-800 mb-4">{editingIngredient ? 'Edit Ingredient' : 'Add New Ingredient'}</h4>
+                                            <div className="flex flex-col gap-4">
                                                 <input
                                                     type="text"
                                                     value={newIngredientName}
                                                     onChange={(e) => setNewIngredientName(e.target.value)}
                                                     placeholder="Ingredient Name"
-                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                    className="px-5 py-3 border border-gray-300 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 outline-none transition-all duration-200 text-lg"
                                                 />
                                                 <textarea
                                                     value={newIngredientDescription}
                                                     onChange={(e) => setNewIngredientDescription(e.target.value)}
                                                     placeholder="Ingredient Description"
-                                                    rows="3"
-                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                    rows="4"
+                                                    className="px-5 py-3 border border-gray-300 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 outline-none transition-all duration-200 text-lg"
                                                 ></textarea>
-                                                <div className="flex gap-3 justify-end">
+                                                <div className="flex gap-4 justify-end">
                                                     <button
                                                         onClick={editingIngredient ? handleUpdateIngredient : () => handleAddIngredient(newIngredientName, newIngredientDescription)}
-                                                        className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl shadow-md hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center whitespace-nowrap text-base"
                                                     >
                                                         {editingIngredient ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
                                                         {editingIngredient ? 'Update Ingredient' : 'Add Ingredient'}
@@ -1424,7 +1462,7 @@ const App = () => {
                                                     {editingIngredient && (
                                                         <button
                                                             onClick={() => { setEditingIngredient(null); setNewIngredientName(''); setNewIngredientDescription(''); }}
-                                                            className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                            className="px-5 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-200 transform hover:scale-105 flex items-center justify-center whitespace-nowrap text-base"
                                                         >
                                                             <X className="w-5 h-5 mr-2" /> Cancel
                                                         </button>
@@ -1434,88 +1472,88 @@ const App = () => {
                                         </div>
 
                                         {/* Ingredient List */}
-                                        <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-md">
-                                            <div className="flex justify-between items-center mb-4">
-                                                <h4 className="text-lg font-semibold text-gray-800">Existing Ingredients ({ingredients.length})</h4>
+                                        <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-lg">
+                                            <div className="flex flex-col sm:flex-row justify-between items-center mb-5 gap-4">
+                                                <h4 className="text-xl font-semibold text-gray-800">Existing Ingredients ({ingredients.length})</h4>
                                                 <input
                                                     type="text"
                                                     value={ingredientFilter}
                                                     onChange={(e) => setIngredientFilter(e.target.value)}
                                                     placeholder="Filter ingredients..."
-                                                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-purple-500 outline-none"
+                                                    className="px-4 py-2 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-purple-300 outline-none w-full sm:w-auto"
                                                 />
                                             </div>
                                             {selectedIngredientIds.length > 0 && (
                                                 <button
                                                     onClick={handleDeleteSelectedIngredients}
-                                                    className="mb-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-sm"
+                                                    className="mb-5 px-5 py-2 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-base transform hover:scale-105"
                                                 >
-                                                    <Trash2 className="w-4 h-4 mr-2" /> Delete Selected ({selectedIngredientIds.length})
+                                                    <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedIngredientIds.length})
                                                 </button>
                                             )}
-                                            <ul className="space-y-2">
+                                            <ul className="space-y-3">
                                                 {ingredients
                                                     .filter(i => i.name.toLowerCase().includes(ingredientFilter.toLowerCase()))
                                                     .map(ingredient => (
-                                                        <li key={ingredient.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 shadow-sm">
-                                                            <div className="flex items-center">
+                                                        <li key={ingredient.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md hover:border-purple-300">
+                                                            <div className="flex items-center mb-2 sm:mb-0">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedIngredientIds.includes(ingredient.id)}
                                                                     onChange={() => handleToggleSelectIngredient(ingredient.id)}
-                                                                    className="mr-3 h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                                    className="mr-3 h-5 w-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
                                                                 />
                                                                 <div>
-                                                                    <span className="font-medium text-gray-700">{ingredient.name}</span>
-                                                                    {ingredient.description && <p className="text-gray-500 text-sm">{ingredient.description}</p>}
+                                                                    <span className="font-medium text-lg text-gray-700">{ingredient.name}</span>
+                                                                    {ingredient.description && <p className="text-gray-500 text-sm mt-1">{ingredient.description}</p>}
                                                                 </div>
                                                             </div>
-                                                            <div className="flex space-x-2">
-                                                                <button onClick={() => handleEditIngredient(ingredient)} className="text-blue-600 hover:text-blue-800 transition-colors">
-                                                                    <Edit className="w-5 h-5" />
+                                                            <div className="flex space-x-3 ml-auto sm:ml-0">
+                                                                <button onClick={() => handleEditIngredient(ingredient)} className="text-blue-600 hover:text-blue-800 transition-colors transform hover:scale-110">
+                                                                    <Edit className="w-6 h-6" />
                                                                 </button>
-                                                                <button onClick={() => handleDeleteIngredient(ingredient.id)} className="text-red-600 hover:text-red-800 transition-colors">
-                                                                    <Trash2 className="w-5 h-5" />
+                                                                <button onClick={() => handleDeleteIngredient(ingredient.id)} className="text-red-600 hover:text-red-800 transition-colors transform hover:scale-110">
+                                                                    <Trash2 className="w-6 h-6" />
                                                                 </button>
                                                             </div>
                                                         </li>
                                                     ))}
                                             </ul>
-                                            {ingredients.length === 0 && <p className="text-center text-gray-500 py-4">No ingredients added yet.</p>}
+                                            {ingredients.length === 0 && <p className="text-center text-gray-500 py-6 text-lg">No ingredients added yet. Use the form above to add your first ingredient.</p>}
                                         </div>
                                     </div>
                                 )}
 
                                 {adminSubTab === 'products' && (
-                                    <div className="space-y-6">
-                                        <h3 className="text-2xl font-bold text-purple-600 mb-4">Manage Products</h3>
+                                    <div className="space-y-8">
+                                        <h3 className="text-3xl font-bold text-purple-700 mb-6">Manage Products</h3>
                                         {/* NEW: Shopify Integration Section */}
-                                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 shadow-inner">
-                                            <h4 className="text-lg font-semibold text-blue-700 mb-3">Fetch Products from Shopify</h4>
-                                            <p className="text-sm text-gray-600 mb-4">
+                                        <div className="p-6 bg-blue-50 rounded-2xl border border-blue-200 shadow-lg">
+                                            <h4 className="text-xl font-semibold text-blue-800 mb-4">Fetch Products from Shopify</h4>
+                                            <p className="text-base text-gray-700 mb-4">
                                                 Enter your Shopify store domain and a **Storefront Access Token** (for client-side fetching) to import products.
                                                 <br />
                                                 <span className="font-bold text-red-600">Warning:</span> Exposing API keys client-side is NOT secure for production. Use a backend for real integration.
                                             </p>
-                                            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                                            <div className="flex flex-col sm:flex-row gap-4 mb-4">
                                                 <input
                                                     type="text"
                                                     value={shopifyStoreDomain}
                                                     onChange={(e) => setShopifyStoreDomain(e.target.value)}
                                                     placeholder="your-store-name.myshopify.com"
-                                                    className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                                                    className="flex-grow px-5 py-3 border border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-300 focus:border-blue-500 outline-none transition-all duration-200 text-lg"
                                                 />
                                                 <input
                                                     type="password" // Use type="password" for API keys
                                                     value={shopifyApiKey}
                                                     onChange={(e) => setShopifyApiKey(e.target.value)}
                                                     placeholder="Shopify Storefront Access Token"
-                                                    className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                                                    className="flex-grow px-5 py-3 border border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-300 focus:border-blue-500 outline-none transition-all duration-200 text-lg"
                                                 />
                                                 <button
                                                     onClick={handleFetchShopifyProducts}
                                                     disabled={fetchingShopifyProducts}
-                                                    className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed text-base transform hover:scale-105"
                                                 >
                                                     {fetchingShopifyProducts ? (
                                                         <span className="flex items-center">
@@ -1535,48 +1573,48 @@ const App = () => {
                                         </div>
 
                                         {/* Add Product Form */}
-                                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-100 shadow-inner">
-                                            <h4 className="text-lg font-semibold text-purple-700 mb-3">{editingProduct ? 'Edit Product' : 'Add New Product'}</h4>
-                                            <div className="flex flex-col gap-3">
+                                        <div className="p-6 bg-purple-50 rounded-2xl border border-purple-100 shadow-lg">
+                                            <h4 className="text-xl font-semibold text-purple-800 mb-4">{editingProduct ? 'Edit Product' : 'Add New Product'}</h4>
+                                            <div className="flex flex-col gap-4">
                                                 <input
                                                     type="text"
                                                     value={newProductName}
                                                     onChange={(e) => setNewProductName(e.target.value)}
                                                     placeholder="Product Name"
-                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                    className="px-5 py-3 border border-gray-300 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 outline-none transition-all duration-200 text-lg"
                                                 />
                                                 <textarea
                                                     value={newProductDescription}
                                                     onChange={(e) => setNewProductDescription(e.target.value)}
                                                     placeholder="Product Description"
-                                                    rows="3"
-                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                    rows="4"
+                                                    className="px-5 py-3 border border-gray-300 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 outline-none transition-all duration-200 text-lg"
                                                 ></textarea>
                                                 <input
                                                     type="text"
                                                     value={newProductImageUrl}
                                                     onChange={(e) => setNewProductImageUrl(e.target.value)}
                                                     placeholder="Image URL (e.g., https://placehold.co/100x100)"
-                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                                    className="px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-400 text-lg"
                                                 />
                                                 <input
                                                     type="text"
                                                     value={newProductShopifyUrl}
                                                     onChange={(e) => setNewProductShopifyUrl(e.target.value)}
                                                     placeholder="Shopify Product URL"
-                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                                    className="px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-400 text-lg"
                                                 />
                                                 {/* Ingredient Multi-Select for Products */}
                                                 <div className="relative">
-                                                    <label className="block text-gray-700 text-sm font-bold mb-2">Target Ingredients:</label>
-                                                    <div className="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-md bg-white">
+                                                    <label className="block text-gray-700 text-base font-bold mb-3">Target Ingredients:</label>
+                                                    <div className="flex flex-wrap gap-3 p-3 border border-gray-300 rounded-xl bg-white shadow-sm">
                                                         {ingredients.map(ingredient => (
                                                             <button
                                                                 key={ingredient.id}
                                                                 onClick={() => handleIngredientSelection(ingredient.name)}
-                                                                className={`px-3 py-1 rounded-full text-sm transition-colors duration-200 ${
+                                                                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 transform hover:scale-105 ${
                                                                     newProductTargetIngredients.includes(ingredient.name)
-                                                                        ? 'bg-purple-200 text-purple-800'
+                                                                        ? 'bg-purple-200 text-purple-800 shadow-sm'
                                                                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                                                 }`}
                                                             >
@@ -1586,10 +1624,10 @@ const App = () => {
                                                     </div>
                                                 </div>
 
-                                                <div className="flex gap-3 justify-end">
+                                                <div className="flex gap-4 justify-end">
                                                     <button
                                                         onClick={editingProduct ? handleUpdateProduct : handleAddProduct}
-                                                        className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl shadow-md hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center whitespace-nowrap text-base"
                                                     >
                                                         {editingProduct ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
                                                         {editingProduct ? 'Update Product' : 'Add Product'}
@@ -1597,7 +1635,7 @@ const App = () => {
                                                     {editingProduct && (
                                                         <button
                                                             onClick={() => { setEditingProduct(null); setNewProductName(''); setNewProductDescription(''); setNewProductImageUrl(''); setNewProductShopifyUrl(''); setNewProductTargetIngredients([]); }}
-                                                            className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                            className="px-5 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-200 transform hover:scale-105 flex items-center justify-center whitespace-nowrap text-base"
                                                         >
                                                             <X className="w-5 h-5 mr-2" /> Cancel
                                                         </button>
@@ -1607,81 +1645,81 @@ const App = () => {
                                         </div>
 
                                         {/* Product List */}
-                                        <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-md">
-                                            <div className="flex justify-between items-center mb-4">
-                                                <h4 className="text-lg font-semibold text-gray-800">Existing Products ({products.length})</h4>
+                                        <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-lg">
+                                            <div className="flex flex-col sm:flex-row justify-between items-center mb-5 gap-4">
+                                                <h4 className="text-xl font-semibold text-gray-800">Existing Products ({products.length})</h4>
                                                 <input
                                                     type="text"
                                                     value={productFilter}
                                                     onChange={(e) => setProductFilter(e.target.value)}
                                                     placeholder="Filter products..."
-                                                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-purple-500 outline-none"
+                                                    className="px-4 py-2 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-purple-300 outline-none w-full sm:w-auto"
                                                 />
                                             </div>
                                             {selectedProductIds.length > 0 && (
                                                 <button
                                                     onClick={handleDeleteSelectedProducts}
-                                                    className="mb-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-sm"
+                                                    className="mb-5 px-5 py-2 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-base transform hover:scale-105"
                                                 >
-                                                    <Trash2 className="w-4 h-4 mr-2" /> Delete Selected ({selectedProductIds.length})
+                                                    <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedProductIds.length})
                                                 </button>
                                             )}
-                                            <ul className="space-y-2">
+                                            <ul className="space-y-3">
                                                 {products
                                                     .filter(p => p.name.toLowerCase().includes(productFilter.toLowerCase()))
                                                     .map(product => (
-                                                        <li key={product.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 shadow-sm">
-                                                            <div className="flex items-center">
+                                                        <li key={product.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md hover:border-purple-300">
+                                                            <div className="flex items-center mb-2 sm:mb-0">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedProductIds.includes(product.id)}
                                                                     onChange={() => handleToggleSelectProduct(product.id)}
-                                                                    className="mr-3 h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                                    className="mr-3 h-5 w-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
                                                                 />
                                                                 <img
-                                                                    src={product.imageUrl || `https://placehold.co/50x50/ADD8E6/000000?text=Prod`}
+                                                                    src={product.imageUrl || `https://placehold.co/60x60/ADD8E6/000000?text=Prod`}
                                                                     alt={product.name}
-                                                                    className="w-12 h-12 rounded-md object-cover mr-3 border border-gray-200"
-                                                                    onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/50x50/CCCCCC/000000?text=Error`; }}
+                                                                    className="w-16 h-16 rounded-lg object-cover mr-4 border border-gray-200 shadow-sm flex-shrink-0"
+                                                                    onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/60x60/CCCCCC/000000?text=Error`; }}
                                                                 />
                                                                 <div>
-                                                                    <span className="font-medium text-gray-700">{product.name}</span>
-                                                                    {product.description && <p className="text-gray-500 text-sm truncate w-48">{product.description}</p>}
+                                                                    <span className="font-medium text-lg text-gray-700">{product.name}</span>
+                                                                    {product.description && <p className="text-gray-500 text-sm mt-1 truncate w-48 sm:w-64">{product.description}</p>}
                                                                     {product.targetIngredients && product.targetIngredients.length > 0 && (
-                                                                        <p className="text-gray-500 text-xs mt-1">Key: {product.targetIngredients.join(', ')}</p>
+                                                                        <p className="text-gray-600 text-xs mt-1 font-medium">Key: <span className="font-normal">{product.targetIngredients.join(', ')}</span></p>
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                            <div className="flex space-x-2">
-                                                                <button onClick={() => handleEditProduct(product)} className="text-blue-600 hover:text-blue-800 transition-colors">
-                                                                    <Edit className="w-5 h-5" />
+                                                            <div className="flex space-x-3 ml-auto sm:ml-0">
+                                                                <button onClick={() => handleEditProduct(product)} className="text-blue-600 hover:text-blue-800 transition-colors transform hover:scale-110">
+                                                                    <Edit className="w-6 h-6" />
                                                                 </button>
-                                                                <button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-800 transition-colors">
-                                                                    <Trash2 className="w-5 h-5" />
+                                                                <button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-800 transition-colors transform hover:scale-110">
+                                                                    <Trash2 className="w-6 h-6" />
                                                                 </button>
                                                             </div>
                                                         </li>
                                                     ))}
                                             </ul>
-                                            {products.length === 0 && <p className="text-center text-gray-500 py-4">No products added yet.</p>}
+                                            {products.length === 0 && <p className="text-center text-gray-500 py-6 text-lg">No products added yet. Use the form above or fetch from Shopify.</p>}
                                         </div>
                                     </div>
                                 )}
 
                                 {adminSubTab === 'mappings' && (
-                                    <div className="space-y-6">
-                                        <h3 className="text-2xl font-bold text-purple-600 mb-4">Manage Concern-Ingredient Mappings</h3>
+                                    <div className="space-y-8">
+                                        <h3 className="text-3xl font-bold text-purple-700 mb-6">Manage Concern-Ingredient Mappings</h3>
                                         {/* Add/Edit Mapping Form */}
-                                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-100 shadow-inner">
-                                            <h4 className="text-lg font-semibold text-purple-700 mb-3">{editingMapping ? 'Edit Mapping' : 'Add New Mapping'}</h4>
-                                            <div className="flex flex-col gap-3">
+                                        <div className="p-6 bg-purple-50 rounded-2xl border border-purple-100 shadow-lg">
+                                            <h4 className="text-xl font-semibold text-purple-800 mb-4">{editingMapping ? 'Edit Mapping' : 'Add New Mapping'}</h4>
+                                            <div className="flex flex-col gap-4">
                                                 <select
                                                     value={selectedConcernForMapping}
                                                     onChange={(e) => {
                                                         setSelectedConcernForMapping(e.target.value);
                                                         setAiSuggestedMappingIngredients([]); // Clear suggestions when concern changes
                                                     }}
-                                                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
+                                                    className="px-5 py-3 border border-gray-300 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 outline-none transition-all duration-200 text-lg"
                                                 >
                                                     <option value="">Select Concern</option>
                                                     {concerns.map(concern => (
@@ -1694,11 +1732,11 @@ const App = () => {
                                                     <button
                                                         onClick={handleGenerateAIIngredientSuggestionsForMapping}
                                                         disabled={!selectedConcernForMapping || generatingMappingIngredientSuggestions}
-                                                        className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-md shadow-md hover:bg-blue-600 transition-colors flex items-center justify-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center text-base disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
                                                     >
                                                         {generatingMappingIngredientSuggestions ? (
                                                             <span className="flex items-center">
-                                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                                 </svg>
@@ -1706,7 +1744,7 @@ const App = () => {
                                                             </span>
                                                         ) : (
                                                             <>
-                                                                <Brain className="w-4 h-4 mr-2" /> AI Suggest Ingredients
+                                                                <Brain className="w-5 h-5 mr-2" /> AI Suggest Ingredients
                                                             </>
                                                         )}
                                                     </button>
@@ -1714,16 +1752,16 @@ const App = () => {
 
                                                 {/* NEW: Display AI Suggested Ingredients for Mappings */}
                                                 {aiSuggestedMappingIngredients.length > 0 && (
-                                                    <div className="mt-2 p-3 bg-blue-100 rounded-lg border border-blue-200">
-                                                        <p className="text-sm font-semibold text-blue-800 mb-2">AI Suggestions:</p>
-                                                        <div className="flex flex-wrap gap-2">
+                                                    <div className="mt-4 p-4 bg-blue-100 rounded-xl border border-blue-300 shadow-inner">
+                                                        <p className="text-base font-semibold text-blue-800 mb-3">AI Suggestions:</p>
+                                                        <div className="flex flex-wrap gap-3">
                                                             {aiSuggestedMappingIngredients.map((suggestion, index) => (
                                                                 <button
                                                                     key={index}
                                                                     onClick={() => handleIngredientToggleForMapping(suggestion)}
-                                                                    className={`px-3 py-1 rounded-full text-sm transition-colors duration-200 ${
+                                                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 transform hover:scale-105 ${
                                                                         selectedIngredientsForMapping.includes(suggestion)
-                                                                            ? 'bg-blue-300 text-blue-900'
+                                                                            ? 'bg-blue-300 text-blue-900 shadow-sm'
                                                                             : 'bg-blue-200 text-blue-800 hover:bg-blue-300'
                                                                     }`}
                                                                 >
@@ -1735,15 +1773,15 @@ const App = () => {
                                                 )}
 
                                                 <div className="relative">
-                                                    <label className="block text-gray-700 text-sm font-bold mb-2">Select Ingredients:</label>
-                                                    <div className="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-md bg-white">
+                                                    <label className="block text-gray-700 text-base font-bold mb-3">Select Ingredients:</label>
+                                                    <div className="flex flex-wrap gap-3 p-3 border border-gray-300 rounded-xl bg-white shadow-sm">
                                                         {ingredients.map(ingredient => (
                                                             <button
                                                                 key={ingredient.id}
                                                                 onClick={() => handleIngredientToggleForMapping(ingredient.name)}
-                                                                className={`px-3 py-1 rounded-full text-sm transition-colors duration-200 ${
+                                                                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 transform hover:scale-105 ${
                                                                     selectedIngredientsForMapping.includes(ingredient.name)
-                                                                        ? 'bg-pink-200 text-pink-800'
+                                                                        ? 'bg-pink-200 text-pink-800 shadow-sm'
                                                                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                                                 }`}
                                                             >
@@ -1752,10 +1790,10 @@ const App = () => {
                                                         ))}
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-3 justify-end">
+                                                <div className="flex gap-4 justify-end">
                                                     <button
                                                         onClick={editingMapping ? handleUpdateMapping : handleAddMapping}
-                                                        className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl shadow-md hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center whitespace-nowrap text-base"
                                                     >
                                                         {editingMapping ? <Save className="w-5 h-5 mr-2" /> : <PlusCircle className="w-5 h-5 mr-2" />}
                                                         {editingMapping ? 'Update Mapping' : 'Add Mapping'}
@@ -1763,7 +1801,7 @@ const App = () => {
                                                     {editingMapping && (
                                                         <button
                                                             onClick={() => { setEditingMapping(null); setSelectedConcernForMapping(''); setSelectedIngredientsForMapping([]); setAiSuggestedMappingIngredients([]); }}
-                                                            className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
+                                                            className="px-5 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-200 transform hover:scale-105 flex items-center justify-center whitespace-nowrap text-base"
                                                         >
                                                             <X className="w-5 h-5 mr-2" /> Cancel
                                                         </button>
@@ -1773,57 +1811,57 @@ const App = () => {
                                         </div>
 
                                         {/* Mapping List */}
-                                        <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-md">
-                                            <div className="flex justify-between items-center mb-4">
-                                                <h4 className="text-lg font-semibold text-gray-800">Existing Mappings ({concernIngredientMappings.length})</h4>
+                                        <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-lg">
+                                            <div className="flex flex-col sm:flex-row justify-between items-center mb-5 gap-4">
+                                                <h4 className="text-xl font-semibold text-gray-800">Existing Mappings ({concernIngredientMappings.length})</h4>
                                                 <input
                                                     type="text"
                                                     value={mappingFilter}
                                                     onChange={(e) => setMappingFilter(e.target.value)}
                                                     placeholder="Filter mappings..."
-                                                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-purple-500 outline-none"
+                                                    className="px-4 py-2 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-purple-300 outline-none w-full sm:w-auto"
                                                 />
                                             </div>
                                             {selectedMappingIds.length > 0 && (
                                                 <button
                                                     onClick={handleDeleteSelectedMappings}
-                                                    className="mb-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-sm"
+                                                    className="mb-5 px-5 py-2 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-colors flex items-center justify-center text-base transform hover:scale-105"
                                                 >
-                                                    <Trash2 className="w-4 h-4 mr-2" /> Delete Selected ({selectedMappingIds.length})
+                                                    <Trash2 className="w-5 h-5 mr-2" /> Delete Selected ({selectedMappingIds.length})
                                                 </button>
                                             )}
-                                            <ul className="space-y-2">
+                                            <ul className="space-y-3">
                                                 {concernIngredientMappings
                                                     .filter(m => m.concernName.toLowerCase().includes(mappingFilter.toLowerCase()) ||
                                                         (m.ingredientNames && m.ingredientNames.some(ing => ing.toLowerCase().includes(mappingFilter.toLowerCase()))))
                                                     .map(mapping => (
-                                                        <li key={mapping.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 shadow-sm">
-                                                            <div className="flex items-center">
+                                                        <li key={mapping.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md hover:border-purple-300">
+                                                            <div className="flex items-center mb-2 sm:mb-0">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedMappingIds.includes(mapping.id)}
                                                                     onChange={() => handleToggleSelectMapping(mapping.id)}
-                                                                    className="mr-3 h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                                    className="mr-3 h-5 w-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
                                                                 />
                                                                 <div>
-                                                                    <span className="font-medium text-gray-700">{mapping.concernName}</span>
+                                                                    <span className="font-medium text-lg text-gray-700">{mapping.concernName}</span>
                                                                     {mapping.ingredientNames && mapping.ingredientNames.length > 0 && (
-                                                                        <p className="text-gray-500 text-sm">Ingredients: {mapping.ingredientNames.join(', ')}</p>
+                                                                        <p className="text-gray-500 text-sm mt-1">Ingredients: {mapping.ingredientNames.join(', ')}</p>
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                            <div className="flex space-x-2">
-                                                                <button onClick={() => handleEditMapping(mapping)} className="text-blue-600 hover:text-blue-800 transition-colors">
-                                                                    <Edit className="w-5 h-5" />
+                                                            <div className="flex space-x-3 ml-auto sm:ml-0">
+                                                                <button onClick={() => handleEditMapping(mapping)} className="text-blue-600 hover:text-blue-800 transition-colors transform hover:scale-110">
+                                                                    <Edit className="w-6 h-6" />
                                                                 </button>
-                                                                <button onClick={() => handleDeleteMapping(mapping.id)} className="text-red-600 hover:text-red-800 transition-colors">
-                                                                    <Trash2 className="w-5 h-5" />
+                                                                <button onClick={() => handleDeleteMapping(mapping.id)} className="text-red-600 hover:text-red-800 transition-colors transform hover:scale-110">
+                                                                    <Trash2 className="w-6 h-6" />
                                                                 </button>
                                                             </div>
                                                         </li>
                                                     ))}
                                             </ul>
-                                            {concernIngredientMappings.length === 0 && <p className="text-center text-gray-500 py-4">No mappings added yet.</p>}
+                                            {concernIngredientMappings.length === 0 && <p className="text-center text-gray-500 py-6 text-lg">No mappings added yet. Select a concern and ingredients above to create one.</p>}
                                         </div>
                                     </div>
                                 )}
@@ -1834,18 +1872,18 @@ const App = () => {
             </div>
 
             {/* Admin Login/Logout Button (for development/testing) */}
-            <div className="mt-8 text-center">
+            <div className="mt-10 text-center">
                 {userRole === 'customer' ? (
                     <button
                         onClick={() => setUserRole('admin')}
-                        className="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition-colors"
+                        className="px-8 py-4 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 font-bold rounded-2xl shadow-lg hover:from-gray-300 hover:to-gray-400 transition-all duration-300 transform hover:scale-105 text-lg"
                     >
                         Switch to Admin View (Dev Mode)
                     </button>
                 ) : (
                     <button
                         onClick={() => { setUserRole('customer'); setActiveTab('customer'); }}
-                        className="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition-colors"
+                        className="px-8 py-4 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 font-bold rounded-2xl shadow-lg hover:from-gray-300 hover:to-gray-400 transition-all duration-300 transform hover:scale-105 text-lg"
                     >
                         Switch to Customer View
                     </button>
