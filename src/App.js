@@ -7,6 +7,7 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, addDoc, deleteDoc, getDocs } from 'firebase/firestore';
 // Removed XCircle, Search, Settings, Filter as they were unused based on ESLint report
 import { CheckCircle, Sparkles, PlusCircle, Edit, Trash2, Save, X, Link, Brain, Download, Lightbulb } from 'lucide-react'; // Added Download and Lightbulb icon
+import { getFunctions, httpsCallable } from 'firebase/functions'; // Import getFunctions and httpsCallable
 
 // IMPORTANT: For Netlify deployment, environment variables are accessed via process.env
 // and need to be prefixed with REACT_APP_ (e.g., REACT_APP_APP_ID, REACT_APP_FIREBASE_CONFIG).
@@ -33,13 +34,14 @@ try {
 
 
 // Initialize Firebase outside the component to prevent re-initialization
-let app, db, auth;
+let app, db, auth, functions; // Declare functions here
 // Added a check to ensure firebaseConfig is a non-empty object with projectId before initializing
 if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId) {
     try {
         app = initializeApp(firebaseConfig);
         db = getFirestore(app);
         auth = getAuth(app);
+        functions = getFunctions(app); // Initialize functions
     } catch (error) {
         console.error("Firebase initialization error:", error);
         // Handle error, e.g., display a message to the user
@@ -807,7 +809,7 @@ const App = () => {
         showConfirmation("Are you sure you want to delete this product?", async () => {
             try {
                 await deleteDoc(doc(db, `${publicDataPath}/products`, id));
-            } catch (e) {
+            }  catch (e) {
                 console.error("Error deleting product: ", e);
                 showConfirmation("Failed to delete product. Please try again.", null, false);
             }
@@ -1523,7 +1525,7 @@ const App = () => {
                                                     </button>
                                                     {editingProduct && (
                                                         <button
-                                                            onClick={() => { setEditingProduct(null); setNewProductName(''); setNewProductDescription(''); setNewProductImageUrl(''); setNewProductShopifyUrl(''); setNewProductTargetIngredients([]); }}
+                                                            onClick={() => { setNewProductName(''); setNewProductDescription(''); setNewProductImageUrl(''); setNewProductShopifyUrl(''); setNewProductTargetIngredients([]); }}
                                                             className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
                                                         >
                                                             <X className="w-5 h-5 mr-2" /> Cancel
@@ -1619,7 +1621,50 @@ const App = () => {
                                                 {/* NEW: AI Suggest Ingredients for Mapping Button */}
                                                 {selectedConcernForMapping && (
                                                     <button
-                                                        onClick={() => handleGenerateIngredientsForMappingTab(selectedConcernForMapping)}
+                                                        onClick={async () => {
+                                                            setGeneratingAIIngredientsForMappingTab(true);
+                                                            setAiSuggestedIngredientsForMappingTab([]); // Clear previous suggestions
+                                                            const prompt = `Given the beauty concern: "${selectedConcernForMapping}", what are the top 3-5 key skincare ingredients that would effectively address this? Provide only the ingredient names, separated by commas. For example: "Ingredient1, Ingredient2".`;
+
+                                                            try {
+                                                                if (typeof getFunctions === 'undefined' || !functions) {
+                                                                    showConfirmation("Cloud Functions not initialized. Cannot generate AI suggestions.", null, false);
+                                                                    return;
+                                                                }
+                                                                const geminiApiKey = process.env.REACT_APP_GEMINI_API_KEY;
+                                                                if (!geminiApiKey) {
+                                                                    showConfirmation("Gemini API Key is not configured. Please contact support.", null, false);
+                                                                    return;
+                                                                }
+
+                                                                const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                                                                const payload = { contents: chatHistory };
+                                                                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+
+                                                                const response = await fetch(apiUrl, {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify(payload)
+                                                                });
+
+                                                                const result = await response.json();
+
+                                                                if (result.candidates && result.candidates.length > 0 &&
+                                                                    result.candidates[0].content && result.candidates[0].content.parts &&
+                                                                    result.candidates[0].content.parts.length > 0) {
+                                                                    const text = result.candidates[0].content.parts[0].text;
+                                                                    const suggestions = text.split(',').map(s => s.trim()).filter(s => s !== '');
+                                                                    setAiSuggestedIngredientsForMappingTab(suggestions);
+                                                                } else {
+                                                                    showConfirmation("No AI suggestions found. Please try again.", null, false);
+                                                                }
+                                                            } catch (error) {
+                                                                console.error("Error generating AI ingredient suggestions:", error);
+                                                                showConfirmation("Failed to get AI suggestions. Please try again.", null, false);
+                                                            } finally {
+                                                                setGeneratingAIIngredientsForMappingTab(false);
+                                                            }
+                                                        }}
                                                         disabled={generatingAIIngredientsForMappingTab}
                                                         className="px-5 py-2 bg-blue-500 text-white font-semibold rounded-md shadow-md hover:bg-blue-600 transition-colors flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
@@ -1780,7 +1825,7 @@ const App = () => {
                 )}
             </div>
 
-            {/* Confirmation Modal Portal */}
+            {/* Confirmation Modal Portal */}\
             {showConfirmModal && ReactDOM.createPortal(
                 <ConfirmationModal
                     message={confirmMessage}
