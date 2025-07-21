@@ -1604,7 +1604,10 @@ const App = () => {
                                             <div className="flex flex-col gap-3">
                                                 <select
                                                     value={selectedConcernForMapping}
-                                                    onChange={(e) => setSelectedConcernForMapping(e.target.value)}
+                                                    onChange={(e) => {
+                                                        setSelectedConcernForMapping(e.target.value);
+                                                        setAiSuggestedIngredientsForMappingTab([]); // Clear AI suggestions when concern changes
+                                                    }}
                                                     className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200"
                                                 >
                                                     <option value="">Select Concern</option>
@@ -1612,6 +1615,52 @@ const App = () => {
                                                         <option key={concern.id} value={concern.name}>{concern.name}</option>
                                                     ))}
                                                 </select>
+
+                                                {/* NEW: AI Suggest Ingredients for Mapping Button */}
+                                                {selectedConcernForMapping && (
+                                                    <button
+                                                        onClick={() => handleGenerateIngredientsForMappingTab(selectedConcernForMapping)}
+                                                        disabled={generatingAIIngredientsForMappingTab}
+                                                        className="px-5 py-2 bg-blue-500 text-white font-semibold rounded-md shadow-md hover:bg-blue-600 transition-colors flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        {generatingAIIngredientsForMappingTab ? (
+                                                            <span className="flex items-center">
+                                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                </svg>
+                                                                Generating...
+                                                            </span>
+                                                        ) : (
+                                                            <>
+                                                                <Lightbulb className="w-5 h-5 mr-2" /> Suggest Ingredients (AI)
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                )}
+
+                                                {/* NEW: Display AI Suggested Ingredients for Mapping */}
+                                                {aiSuggestedIngredientsForMappingTab.length > 0 && (
+                                                    <div className="mt-4 p-3 bg-blue-100 rounded-lg border border-blue-200">
+                                                        <p className="text-sm font-semibold text-blue-800 mb-2">AI Suggestions for "{selectedConcernForMapping}":</p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {aiSuggestedIngredientsForMappingTab.map((ingredient, index) => (
+                                                                <button
+                                                                    key={index} // Using index as key is okay for static lists without reordering
+                                                                    onClick={() => handleIngredientToggleForMapping(ingredient)} // Directly add to selectedIngredientsForMapping
+                                                                    className={`px-3 py-1 rounded-full text-sm transition-colors duration-200 ${
+                                                                        selectedIngredientsForMapping.includes(ingredient)
+                                                                            ? 'bg-purple-200 text-purple-800'
+                                                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                    }`}
+                                                                >
+                                                                    {ingredient}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 <div className="relative">
                                                     <label className="block text-gray-700 text-sm font-bold mb-2">Select Ingredients:</label>
                                                     <div className="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-md bg-white">
@@ -1640,7 +1689,7 @@ const App = () => {
                                                     </button>
                                                     {editingMapping && (
                                                         <button
-                                                            onClick={() => { setEditingMapping(null); setSelectedConcernForMapping(''); setSelectedIngredientsForMapping([]); }}
+                                                            onClick={() => { setEditingMapping(null); setSelectedConcernForMapping(''); setSelectedIngredientsForMapping([]); setAiSuggestedIngredientsForMappingTab([]); }}
                                                             className="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-md shadow-md hover:bg-gray-400 transition-colors flex items-center justify-center whitespace-nowrap"
                                                         >
                                                             <X className="w-5 h-5 mr-2" /> Cancel
