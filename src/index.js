@@ -1,17 +1,32 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
 import App from './App';
-import reportWebVitals from './reportWebVitals';
+
+import {
+  AppBridgeProvider
+} from '@shopify/app-bridge-react';
+import { getSessionToken } from '@shopify/app-bridge-utils';
+import { BrowserRouter } from 'react-router-dom';
+import { AppProvider as PolarisProvider } from '@shopify/polaris';
+
+import '@shopify/polaris/build/esm/styles.css';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+const host = new URLSearchParams(window.location.search).get('host');
+
+root.render(
+  <BrowserRouter>
+    <PolarisProvider>
+      <AppBridgeProvider
+        config={{
+          apiKey: 'YOUR_SHOPIFY_API_KEY', // we'll dynamically inject this later
+          host: host,
+          forceRedirect: true
+        }}
+      >
+        <App />
+      </AppBridgeProvider>
+    </PolarisProvider>
+  </BrowserRouter>
+);
