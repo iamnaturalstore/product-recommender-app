@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@shopify/app-bridge": "^3.7.10",
     "@shopify/app-bridge-react": "^4.2.0",
     "@shopify/app-bridge-utils": "^3.5.1",
