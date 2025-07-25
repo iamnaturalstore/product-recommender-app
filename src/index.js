@@ -2,8 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import { AppProvider as PolarisProvider } from '@shopify/polaris';
-import { AppBridgeProvider } from './components/AppBridgeProvider'; // ✅ Correct import
+import { Provider as AppBridgeReactProvider } from '@shopify/app-bridge-react'; // ✅ THIS WORKS
 import '@shopify/polaris/build/esm/styles.css';
+
 import App from './App';
 
 const apiKey = new URLSearchParams(window.location.search).get("shopifyApiKey");
@@ -19,11 +20,11 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <HashRouter>
-      <AppBridgeProvider config={config}>
+      <AppBridgeReactProvider config={config}>
         <PolarisProvider>
           <App />
         </PolarisProvider>
-      </AppBridgeProvider>
+      </AppBridgeReactProvider>
     </HashRouter>
   </React.StrictMode>
 );
