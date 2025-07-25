@@ -2,16 +2,16 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import { AppProvider as PolarisProvider } from '@shopify/polaris';
-import { Provider as AppBridgeProvider } from '@shopify/app-bridge-react';
 import '@shopify/polaris/build/esm/styles.css';
 
 import App from './App';
+import AppBridgeProvider from './components/AppBridgeProvider';
 
-const apiKey = new URLSearchParams(window.location.search).get('shopifyApiKey');
+const apiKey = new URLSearchParams(window.location.search).get('shopifyApiKey') || process.env.REACT_APP_SHOPIFY_API_KEY;
 const host = new URLSearchParams(window.location.search).get('host');
 
 const config = {
-  apiKey: apiKey || process.env.REACT_APP_SHOPIFY_API_KEY,
+  apiKey,
   host,
   forceRedirect: true,
 };
