@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import { AppProvider as PolarisProvider } from '@shopify/polaris';
-import AppBridgeReactProvider from '@shopify/app-bridge-react'; // ✅ DEFAULT import
+import { AppBridgeProvider } from '@shopify/app-bridge-react/context'; // ✅ CORRECT IMPORT
 import '@shopify/polaris/build/esm/styles.css';
 
 import App from './App';
@@ -20,11 +20,11 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <HashRouter>
-      <AppBridgeReactProvider config={config}>
+      <AppBridgeProvider config={config}>
         <PolarisProvider>
           <App />
         </PolarisProvider>
-      </AppBridgeReactProvider>
+      </AppBridgeProvider>
     </HashRouter>
   </React.StrictMode>
 );
