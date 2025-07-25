@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -118,12 +118,13 @@ Recommend the top 3 products and why they help with these skin concerns.`;
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/admin/settings" element={<AdminSettings storeId="ask-taylah.myshopify.com" />} />
-      </Routes>
-    </Router>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route
+        path="/admin/settings"
+        element={<AdminSettings storeId="ask-taylah.myshopify.com" />}
+      />
+    </Routes>
   );
 }
 
