@@ -2,10 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import { AppProvider as PolarisProvider } from '@shopify/polaris';
+import { AppBridgeProvider } from './components/AppBridgeProvider'; // ✅ Correct import
 import '@shopify/polaris/build/esm/styles.css';
-
 import App from './App';
-import { AppBridgeProvider } from './components/AppBridgeProvider'; // ✅ Fixed path
 
 const apiKey = new URLSearchParams(window.location.search).get("shopifyApiKey");
 const host = new URLSearchParams(window.location.search).get("host");

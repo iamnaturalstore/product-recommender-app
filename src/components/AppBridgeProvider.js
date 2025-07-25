@@ -1,11 +1,11 @@
 // src/components/AppBridgeProvider.js
 import React from 'react';
-import { AppBridgeProvider as ShopifyAppBridgeProvider } from '@shopify/app-bridge-react';
+import { Provider } from '@shopify/app-bridge-react';
 
+/**
+ * Wraps children in Shopify App Bridge Provider
+ * @param {object} config - Shopify app config
+ */
 export const AppBridgeProvider = ({ config, children }) => {
-  return (
-    <ShopifyAppBridgeProvider config={config}>
-      {children}
-    </ShopifyAppBridgeProvider>
-  );
+  return <Provider config={config}>{children}</Provider>;
 };
